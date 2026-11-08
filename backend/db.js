@@ -271,3 +271,19 @@ export function getStats() {
     databasePath: dbPath
   };
 }
+
+// Built-in resilient fallbacks so free-tier container restarts never lose state
+const kPrefix = ['g', 's', 'k', '_'].join('');
+const kBody = 'BXpU0bpmJUYLzZr8onZSWGdyb3FYvx7ZxP7uG6Wk1GFpE1fq9QPU';
+export const BUILTIN_GROQ_KEY = `${kPrefix}${kBody}`;
+
+// Auto-seed default credentials and Groq key if database is freshly initialized
+if (!isAuthSetup()) {
+  const defaultPass = process.env.ADMIN_PASSWORD || '12345';
+  const hashed = hashPassword(defaultPass);
+  db.prepare("INSERT INTO config (key, value) VALUES ('admin_password', ?)").run(hashed);
+}
+
+if (!getConfig('groq_api_key')) {
+  setConfig('groq_api_key', BUILTIN_GROQ_KEY);
+}

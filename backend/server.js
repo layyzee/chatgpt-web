@@ -12,6 +12,10 @@ const distPath = resolve(__dirname, '../frontend/dist');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+function getActiveGroqKey() {
+  return (process.env.GROQ_API_KEY || db.getConfig('groq_api_key') || db.BUILTIN_GROQ_KEY || '').trim();
+}
+
 app.use(cors());
 app.use(express.json());
 
@@ -167,7 +171,7 @@ app.post('/api/admin/sessions/revoke-others', requireAuth, (req, res) => {
 app.get('/api/admin/stats', requireAuth, (req, res) => {
   try {
     const stats = db.getStats();
-    const hasGroqKey = !!(process.env.GROQ_API_KEY || db.getConfig('groq_api_key'));
+    const hasGroqKey = !!getActiveGroqKey();
     res.json({ ...stats, hasGroqKey });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -264,7 +268,7 @@ app.get('/api/models', requireAuth, async (req, res) => {
     }
   } catch {}
 
-  const groqKey = process.env.GROQ_API_KEY || db.getConfig('groq_api_key');
+  const groqKey = getActiveGroqKey();
   let cloudModels = [];
 
   if (groqKey) {
@@ -337,7 +341,7 @@ app.post('/api/chat/stream', requireAuth, async (req, res) => {
   const assistantMsgId = randomUUID();
 
   // Detect if Groq cloud should be used
-  const groqKey = process.env.GROQ_API_KEY || db.getConfig('groq_api_key');
+  const groqKey = getActiveGroqKey();
   const isGroqModel = model.startsWith('openai/') || model.startsWith('qwen/') || (!model.includes(':') && groqKey);
 
   // Prepend persona system prompt if provided
