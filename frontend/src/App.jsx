@@ -14,6 +14,7 @@ export default function App() {
   const [activeId, setActiveId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isSearchingWeb, setIsSearchingWeb] = useState(false);
   const [models, setModels] = useState([{ id: 'llama3.2:3b', name: 'Llama 3.2 3B (Local 100% Offline)' }]);
   const [selectedModel, setSelectedModel] = useState('llama3.2:3b');
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -159,9 +160,10 @@ export default function App() {
       abortControllerRef.current = null;
     }
     setIsGenerating(false);
+    setIsSearchingWeb(false);
   };
 
-  const handleSend = async (text) => {
+  const handleSend = async (text, options = {}) => {
     if (isGenerating || !text.trim()) return;
 
     let convId = activeId;
@@ -189,7 +191,8 @@ export default function App() {
         body: JSON.stringify({
           conversationId: convId,
           message: text,
-          model: selectedModel
+          model: selectedModel,
+          webSearch: !!options.webSearch
         }),
         signal: abortControllerRef.current.signal
       });
@@ -215,7 +218,14 @@ export default function App() {
 
           try {
             const parsed = JSON.parse(payload);
+            if (parsed.searching) {
+              setIsSearchingWeb(true);
+            }
+            if (parsed.searchResultsCount) {
+              setIsSearchingWeb(false);
+            }
             if (parsed.chunk) {
+              setIsSearchingWeb(false);
               accumulated += parsed.chunk;
               setMessages(prev => {
                 const next = [...prev];
@@ -246,6 +256,7 @@ export default function App() {
       }
     } finally {
       setIsGenerating(false);
+      setIsSearchingWeb(false);
       abortControllerRef.current = null;
       fetchConversations();
     }
@@ -311,6 +322,7 @@ export default function App() {
         selectedModel={selectedModel}
         onOpenSidebar={() => setSidebarOpen(true)}
         onNewChat={handleNewChat}
+        isSearchingWeb={isSearchingWeb}
       />
     </div>
   );

@@ -20,6 +20,36 @@ function getClientMeta(req) {
   return { ip, country, userAgent };
 }
 
+// Zero-cost DuckDuckGo Web Search Scraper
+async function searchWeb(query) {
+  try {
+    const url = 'https://html.duckduckgo.com/html/?q=' + encodeURIComponent(query);
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      }
+    });
+    if (!res.ok) return [];
+    const html = await res.text();
+    const snippets = [];
+    const regex = /<a class="result__snippet[^>]*>([\s\S]*?)<\/a>/g;
+    let match;
+    while ((match = regex.exec(html)) !== null && snippets.length < 4) {
+      const text = match[1]
+        .replace(/<[^>]+>/g, '')
+        .replace(/&#x27;/g, "'")
+        .replace(/&quot;/g, '"')
+        .replace(/&amp;/g, '&')
+        .trim();
+      if (text) snippets.push(text);
+    }
+    return snippets;
+  } catch (err) {
+    console.error('Web search error:', err);
+    return [];
+  }
+}
+
 // --- Authentication Middleware ---
 function requireAuth(req, res, next) {
   if (!db.isAuthSetup()) {
@@ -97,13 +127,11 @@ app.post('/api/auth/logout', (req, res) => {
 
 // --- Admin Portal & Session Management Endpoints (Protected) ---
 
-// Get all active logged-in sessions / devices
 app.get('/api/admin/sessions', requireAuth, (req, res) => {
   try {
     const sessions = db.getAllSessions().map(s => ({
       ...s,
       isCurrent: s.token === req.currentToken,
-      // Mask token except last 6 chars for security identification
       displayToken: s.token.slice(-6)
     }));
     res.json(sessions);
@@ -112,7 +140,6 @@ app.get('/api/admin/sessions', requireAuth, (req, res) => {
   }
 });
 
-// Revoke a specific session / kick device
 app.delete('/api/admin/sessions/:token', requireAuth, (req, res) => {
   try {
     db.deleteSession(req.params.token);
@@ -122,7 +149,6 @@ app.delete('/api/admin/sessions/:token', requireAuth, (req, res) => {
   }
 });
 
-// Revoke all other sessions except current
 app.post('/api/admin/sessions/revoke-others', requireAuth, (req, res) => {
   try {
     db.revokeOtherSessions(req.currentToken);
@@ -132,7 +158,6 @@ app.post('/api/admin/sessions/revoke-others', requireAuth, (req, res) => {
   }
 });
 
-// Get system & database statistics
 app.get('/api/admin/stats', requireAuth, (req, res) => {
   try {
     const stats = db.getStats();
@@ -142,7 +167,6 @@ app.get('/api/admin/stats', requireAuth, (req, res) => {
   }
 });
 
-// Change Master Password
 app.post('/api/admin/change-password', requireAuth, (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
@@ -158,7 +182,6 @@ app.post('/api/admin/change-password', requireAuth, (req, res) => {
 
 // --- Protected Conversations & Chat Endpoints ---
 
-// List all conversations
 app.get('/api/conversations', requireAuth, (req, res) => {
   try {
     const list = db.getConversations();
@@ -168,7 +191,6 @@ app.get('/api/conversations', requireAuth, (req, res) => {
   }
 });
 
-// Create new conversation
 app.post('/api/conversations', requireAuth, (req, res) => {
   try {
     const id = req.body.id || randomUUID();
@@ -180,7 +202,6 @@ app.post('/api/conversations', requireAuth, (req, res) => {
   }
 });
 
-// Get messages for a conversation
 app.get('/api/conversations/:id/messages', requireAuth, (req, res) => {
   try {
     const messages = db.getMessages(req.params.id);
@@ -190,7 +211,6 @@ app.get('/api/conversations/:id/messages', requireAuth, (req, res) => {
   }
 });
 
-// Rename conversation
 app.patch('/api/conversations/:id', requireAuth, (req, res) => {
   try {
     const { title } = req.body;
@@ -201,7 +221,6 @@ app.patch('/api/conversations/:id', requireAuth, (req, res) => {
   }
 });
 
-// Delete conversation
 app.delete('/api/conversations/:id', requireAuth, (req, res) => {
   try {
     db.deleteConversation(req.params.id);
@@ -211,7 +230,6 @@ app.delete('/api/conversations/:id', requireAuth, (req, res) => {
   }
 });
 
-// Check available models & Ollama status
 app.get('/api/models', requireAuth, async (req, res) => {
   let ollamaModels = [];
   let ollamaOnline = false;
@@ -237,9 +255,9 @@ app.get('/api/models', requireAuth, async (req, res) => {
   res.json({ models, ollamaOnline });
 });
 
-// Streaming chat endpoint with Server-Sent Events (SSE)
+// Streaming chat endpoint with Server-Sent Events (SSE) + Live Web Search
 app.post('/api/chat/stream', requireAuth, async (req, res) => {
-  const { conversationId, message, model = 'llama3.2:3b' } = req.body;
+  const { conversationId, message, model = 'llama3.2:3b', webSearch = false } = req.body;
 
   if (!conversationId || !message) {
     return res.status(400).json({ error: 'conversationId and message are required' });
@@ -251,7 +269,7 @@ app.post('/api/chat/stream', requireAuth, async (req, res) => {
     conv = db.createConversation(conversationId, message.slice(0, 30));
   }
 
-  // Save user message in SQLite
+  // Save original user message in SQLite
   const userMsgId = randomUUID();
   db.addMessage(userMsgId, conversationId, 'user', message);
 
@@ -261,10 +279,28 @@ app.post('/api/chat/stream', requireAuth, async (req, res) => {
   res.setHeader('Connection', 'keep-alive');
 
   // Load message history from DB for context
-  const history = db.getMessages(conversationId).map(m => ({
+  let history = db.getMessages(conversationId).map(m => ({
     role: m.role,
     content: m.content
   }));
+
+  // Perform Live Web Search if enabled
+  if (webSearch) {
+    res.write(`data: ${JSON.stringify({ searching: true })}\n\n`);
+    const cleanQuery = message.replace(/\[Attached Document:[\s\S]*?```/g, '').trim().slice(0, 100);
+    const snippets = await searchWeb(cleanQuery || message.slice(0, 60));
+    
+    if (snippets.length > 0) {
+      res.write(`data: ${JSON.stringify({ searchResultsCount: snippets.length })}\n\n`);
+      const searchContext = snippets.map((s, i) => `[Source ${i+1}]: ${s}`).join('\n\n');
+      const enrichedPrompt = `${message}\n\n[Real-Time Live Web Search Information]:\n${searchContext}\n\nPlease answer the user accurately using the live search findings above.`;
+      
+      // Update the last message in the history sent to Ollama
+      if (history.length > 0) {
+        history[history.length - 1].content = enrichedPrompt;
+      }
+    }
+  }
 
   let fullResponse = '';
   const assistantMsgId = randomUUID();

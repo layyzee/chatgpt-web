@@ -13,7 +13,10 @@ import {
   MicOff,
   Paperclip,
   FileText,
-  X
+  X,
+  Globe,
+  Download,
+  Printer
 } from 'lucide-react';
 import MessageItem from './MessageItem.jsx';
 
@@ -48,11 +51,15 @@ export default function ChatView({
   currentTitle,
   selectedModel,
   onOpenSidebar,
-  onNewChat
+  onNewChat,
+  isSearchingWeb
 }) {
   const [input, setInput] = useState('');
   const [attachedFile, setAttachedFile] = useState(null); // { name, size, content }
   const [isListening, setIsListening] = useState(false);
+  const [webSearchEnabled, setWebSearchEnabled] = useState(false);
+  const [showExportMenu, setShowExportMenu] = useState(false);
+
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -126,7 +133,6 @@ export default function ChatView({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Check size limit (max 5MB text)
     if (file.size > 5 * 1024 * 1024) {
       alert('File too large. Maximum size is 5MB.');
       return;
@@ -142,7 +148,6 @@ export default function ChatView({
       });
     };
     reader.readAsText(file);
-    // Reset input
     e.target.value = '';
   };
 
@@ -159,7 +164,7 @@ export default function ChatView({
       fullPrompt = `[Attached Document: ${attachedFile.name}]\n\`\`\`\n${attachedFile.content}\n\`\`\`\n\n${fullPrompt || 'Please analyze this document.'}`;
     }
 
-    onSend(fullPrompt);
+    onSend(fullPrompt, { webSearch: webSearchEnabled });
     setInput('');
     setAttachedFile(null);
   };
@@ -171,10 +176,38 @@ export default function ChatView({
     }
   };
 
+  // Export as Markdown
+  const exportMarkdown = () => {
+    setShowExportMenu(false);
+    if (messages.length === 0) return;
+
+    const title = currentTitle || 'ChatGPT Conversation';
+    let content = `# ${title}\n\n*Exported on ${new Date().toLocaleString()}*\n\n---\n\n`;
+
+    messages.forEach((m) => {
+      const speaker = m.role === 'user' ? '👤 **You**' : '🤖 **ChatGPT**';
+      content += `### ${speaker}\n\n${m.content}\n\n---\n\n`;
+    });
+
+    const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Export / Print as PDF
+  const exportPDF = () => {
+    setShowExportMenu(false);
+    window.print();
+  };
+
   return (
     <div className="flex-1 flex flex-col h-full bg-gpt-main relative overflow-hidden w-full">
       {/* Top Header */}
-      <header className="h-12 border-b border-gpt-border flex items-center justify-between px-3 md:px-4 text-xs text-gray-400 bg-gpt-main/80 backdrop-blur shrink-0 z-10">
+      <header className="h-12 border-b border-gpt-border flex items-center justify-between px-3 md:px-4 text-xs text-gray-400 bg-gpt-main/80 backdrop-blur shrink-0 z-10 print:hidden">
         <div className="flex items-center gap-2 truncate">
           {/* Mobile Hamburger Menu Toggle */}
           <button
@@ -185,12 +218,45 @@ export default function ChatView({
             <Menu size={18} />
           </button>
 
-          <div className="font-medium text-gray-200 truncate max-w-[180px] sm:max-w-xs md:max-w-md">
+          <div className="font-medium text-gray-200 truncate max-w-[150px] sm:max-w-xs md:max-w-md">
             {currentTitle || 'New chat'}
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 relative">
+          {/* Export Conversation Dropdown Button */}
+          {messages.length > 0 && (
+            <div className="relative">
+              <button
+                onClick={() => setShowExportMenu(!showExportMenu)}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-gray-700 hover:bg-gpt-hover text-gray-300 hover:text-white transition-colors text-xs"
+                title="Export conversation"
+              >
+                <Download size={13} />
+                <span className="hidden sm:inline">Export</span>
+              </button>
+
+              {showExportMenu && (
+                <div className="absolute right-0 mt-1.5 w-44 rounded-xl border border-gray-700 bg-[#26272b] p-1 shadow-2xl z-30">
+                  <button
+                    onClick={exportMarkdown}
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-gray-200 hover:bg-gpt-hover text-left transition-colors"
+                  >
+                    <FileText size={14} className="text-[#10a37f]" />
+                    <span>Download Markdown (.md)</span>
+                  </button>
+                  <button
+                    onClick={exportPDF}
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-gray-200 hover:bg-gpt-hover text-left transition-colors"
+                  >
+                    <Printer size={14} className="text-blue-400" />
+                    <span>Print / Save PDF (.pdf)</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Mobile Quick New Chat Button */}
           <button
             onClick={onNewChat}
@@ -203,7 +269,7 @@ export default function ChatView({
           {/* Model badge */}
           <div className="flex items-center gap-1.5 bg-black/40 px-2.5 py-1 rounded-full text-[11px] border border-gray-700 shrink-0">
             <span className="w-1.5 h-1.5 rounded-full bg-green-400"></span>
-            <span className="truncate max-w-[130px] sm:max-w-none">{selectedModel}</span>
+            <span className="truncate max-w-[110px] sm:max-w-none">{selectedModel}</span>
           </div>
         </div>
       </header>
@@ -219,7 +285,7 @@ export default function ChatView({
               What can I help with today?
             </h1>
             <p className="text-xs sm:text-sm text-gray-400 mb-8 max-w-md">
-              Powered by local offline models on your Mac. Voice, document analysis, unlimited chats, zero cost.
+              Powered by local offline models on your Mac. Voice, live web search, and document analysis.
             </p>
 
             {/* Prompt cards */}
@@ -229,7 +295,7 @@ export default function ChatView({
                 return (
                   <button
                     key={idx}
-                    onClick={() => onSend(`${item.title}: ${item.subtitle}`)}
+                    onClick={() => onSend(`${item.title}: ${item.subtitle}`, { webSearch: webSearchEnabled })}
                     className="flex flex-col items-start p-3 sm:p-3.5 rounded-xl border border-gray-700 hover:bg-gpt-hover text-left transition-all group"
                   >
                     <Icon size={18} className="text-gpt-green mb-1.5 group-hover:scale-110 transition-transform" />
@@ -249,13 +315,22 @@ export default function ChatView({
                 isStreaming={isGenerating && index === messages.length - 1 && msg.role === 'assistant'}
               />
             ))}
+
+            {/* Live Web Search Activity Indicator */}
+            {isSearchingWeb && (
+              <div className="py-3 px-4 flex items-center gap-2 text-xs text-[#10a37f] bg-[#10a37f]/10 rounded-xl max-w-sm my-2 animate-pulse">
+                <Globe size={14} className="animate-spin" />
+                <span>Searching the live web for real-time information...</span>
+              </div>
+            )}
+
             <div ref={messagesEndRef} />
           </div>
         )}
       </div>
 
       {/* Floating Input Bar */}
-      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-gpt-main via-gpt-main/90 to-transparent pt-6 pb-3 sm:pb-4 px-3 sm:px-4 z-20">
+      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-gpt-main via-gpt-main/90 to-transparent pt-6 pb-3 sm:pb-4 px-3 sm:px-4 z-20 print:hidden">
         <div className="max-w-3xl mx-auto">
           {/* Attached File Chip */}
           {attachedFile && (
@@ -287,29 +362,44 @@ export default function ChatView({
               accept=".txt,.md,.json,.js,.jsx,.ts,.tsx,.py,.html,.css,.csv,.sql,.env,.log,.xml,.yaml,.yml,.c,.cpp,.h"
             />
 
-            <div className="flex items-center pl-2 pt-1">
+            <div className="flex items-center pl-2 pt-1 gap-1">
               {/* Paperclip / File Upload Button */}
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="p-2 text-gray-400 hover:text-white rounded-lg hover:bg-gray-800 transition-colors"
+                className="p-1.5 sm:p-2 text-gray-400 hover:text-white rounded-lg hover:bg-gray-800 transition-colors"
                 title="Attach text or code document"
               >
-                <Paperclip size={18} />
+                <Paperclip size={17} />
+              </button>
+
+              {/* Live Web Search Toggle Button */}
+              <button
+                type="button"
+                onClick={() => setWebSearchEnabled(!webSearchEnabled)}
+                className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs transition-all ${
+                  webSearchEnabled
+                    ? 'bg-[#10a37f]/20 text-[#10a37f] border border-[#10a37f]/40 font-medium'
+                    : 'text-gray-400 hover:text-white hover:bg-gray-800 border border-transparent'
+                }`}
+                title={webSearchEnabled ? 'Web search enabled (will search DuckDuckGo)' : 'Enable live web search'}
+              >
+                <Globe size={15} />
+                <span className="hidden sm:inline">{webSearchEnabled ? 'Web ON' : 'Web'}</span>
               </button>
 
               {/* Voice Dictation Button */}
               <button
                 type="button"
                 onClick={toggleListening}
-                className={`p-2 rounded-lg transition-colors ${
+                className={`p-1.5 sm:p-2 rounded-lg transition-colors ${
                   isListening
                     ? 'text-red-400 bg-red-950/40 animate-pulse'
                     : 'text-gray-400 hover:text-white hover:bg-gray-800'
                 }`}
                 title={isListening ? 'Listening... click to stop' : 'Voice input (Dictation)'}
               >
-                {isListening ? <MicOff size={18} /> : <Mic size={18} />}
+                {isListening ? <MicOff size={17} /> : <Mic size={17} />}
               </button>
             </div>
 
@@ -319,7 +409,13 @@ export default function ChatView({
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={isListening ? 'Listening to your voice...' : 'Message ChatGPT or ask about attached document...'}
+              placeholder={
+                isListening
+                  ? 'Listening to your voice...'
+                  : webSearchEnabled
+                  ? 'Ask anything (will search live web)...'
+                  : 'Message ChatGPT...'
+              }
               className="w-full bg-transparent text-gray-100 placeholder-gray-400 text-sm py-2.5 pl-4 pr-12 focus:outline-none resize-none max-h-48 overflow-y-auto"
             />
 
