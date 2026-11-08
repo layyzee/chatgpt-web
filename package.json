@@ -1,0 +1,11 @@
+{
+  "name": "chatgpt-web",
+  "version": "1.0.0",
+  "description": "Full-stack ChatGPT Web clone with SQLite persistence and local/cloud AI streaming",
+  "scripts": {
+    "build": "npm run render:build",
+    "start": "npm run render:start",
+    "render:build": "cd frontend && npm install && npm run build && cd ../backend && npm install",
+    "render:start": "cd backend && node server.js"
+  }
+}

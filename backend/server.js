@@ -1,7 +1,13 @@
 import express from 'express';
 import cors from 'cors';
 import { randomUUID } from 'node:crypto';
+import { resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { existsSync } from 'node:fs';
 import * as db from './db.js';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const distPath = resolve(__dirname, '../frontend/dist');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -161,7 +167,8 @@ app.post('/api/admin/sessions/revoke-others', requireAuth, (req, res) => {
 app.get('/api/admin/stats', requireAuth, (req, res) => {
   try {
     const stats = db.getStats();
-    res.json(stats);
+    const hasGroqKey = !!(process.env.GROQ_API_KEY || db.getConfig('groq_api_key'));
+    res.json({ ...stats, hasGroqKey });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -177,6 +184,16 @@ app.post('/api/admin/change-password', requireAuth, (req, res) => {
     res.json({ success: true });
   } catch (err) {
     res.status(400).json({ error: err.message });
+  }
+});
+
+app.post('/api/admin/groq-key', requireAuth, (req, res) => {
+  try {
+    const { key } = req.body;
+    db.setConfig('groq_api_key', (key || '').trim());
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -247,12 +264,26 @@ app.get('/api/models', requireAuth, async (req, res) => {
     }
   } catch {}
 
+  const groqKey = process.env.GROQ_API_KEY || db.getConfig('groq_api_key');
+  let cloudModels = [];
+
+  if (groqKey) {
+    cloudModels = [
+      { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B (Groq Cloud 800 t/s)', provider: 'groq' },
+      { id: 'llama-3.1-8b-instant', name: 'Llama 3.1 8B (Groq Cloud Fast)', provider: 'groq' }
+    ];
+  } else if (!ollamaOnline) {
+    cloudModels = [
+      { id: 'cloud-setup-required', name: '⚡ Configure Free Groq Key (Admin Portal)', provider: 'cloud' }
+    ];
+  }
+
   const models = [
     ...ollamaModels,
-    { id: 'openrouter-free', name: 'OpenRouter Free Cloud', provider: 'openrouter' }
+    ...cloudModels
   ];
 
-  res.json({ models, ollamaOnline });
+  res.json({ models, ollamaOnline, hasGroqKey: !!groqKey });
 });
 
 // Streaming chat endpoint with Server-Sent Events (SSE) + Live Web Search
@@ -295,7 +326,6 @@ app.post('/api/chat/stream', requireAuth, async (req, res) => {
       const searchContext = snippets.map((s, i) => `[Source ${i+1}]: ${s}`).join('\n\n');
       const enrichedPrompt = `${message}\n\n[Real-Time Live Web Search Information]:\n${searchContext}\n\nPlease answer the user accurately using the live search findings above.`;
       
-      // Update the last message in the history sent to Ollama
       if (history.length > 0) {
         history[history.length - 1].content = enrichedPrompt;
       }
@@ -305,41 +335,91 @@ app.post('/api/chat/stream', requireAuth, async (req, res) => {
   let fullResponse = '';
   const assistantMsgId = randomUUID();
 
+  // Detect if Groq cloud should be used
+  const groqKey = process.env.GROQ_API_KEY || db.getConfig('groq_api_key');
+  const isGroqModel = model.startsWith('llama-3.3') || model.startsWith('llama-3.1') || model === 'cloud-setup-required';
+
   try {
-    // Stream from local Ollama
-    const ollamaRes = await fetch('http://localhost:11434/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: model === 'openrouter-free' ? 'llama3.2:3b' : model,
-        messages: history,
-        stream: true
-      })
-    });
+    if (isGroqModel && groqKey) {
+      // Stream from Groq Cloud (Free 800 tokens/sec Llama 3)
+      const targetModel = model === 'cloud-setup-required' ? 'llama-3.3-70b-versatile' : model;
+      const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${groqKey}`
+        },
+        body: JSON.stringify({
+          model: targetModel,
+          messages: history,
+          stream: true
+        })
+      });
 
-    if (!ollamaRes.ok) {
-      throw new Error(`Ollama responded with status: ${ollamaRes.status}`);
-    }
+      if (!groqRes.ok) {
+        const errText = await groqRes.text();
+        throw new Error(`Groq API Error (${groqRes.status}): ${errText}`);
+      }
 
-    const reader = ollamaRes.body.getReader();
-    const decoder = new TextDecoder();
+      const reader = groqRes.body.getReader();
+      const decoder = new TextDecoder();
 
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
 
-      const chunk = decoder.decode(value, { stream: true });
-      const lines = chunk.split('\n').filter(line => line.trim());
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split('\n').filter(l => l.startsWith('data: '));
 
-      for (const line of lines) {
-        try {
-          const parsed = JSON.parse(line);
-          const token = parsed.message?.content || '';
-          if (token) {
-            fullResponse += token;
-            res.write(`data: ${JSON.stringify({ chunk: token })}\n\n`);
-          }
-        } catch {}
+        for (const line of lines) {
+          const payload = line.replace('data: ', '').trim();
+          if (payload === '[DONE]') break;
+          try {
+            const parsed = JSON.parse(payload);
+            const token = parsed.choices?.[0]?.delta?.content || '';
+            if (token) {
+              fullResponse += token;
+              res.write(`data: ${JSON.stringify({ chunk: token })}\n\n`);
+            }
+          } catch {}
+        }
+      }
+    } else {
+      // Stream from local Ollama
+      const ollamaRes = await fetch('http://localhost:11434/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: model,
+          messages: history,
+          stream: true
+        })
+      });
+
+      if (!ollamaRes.ok) {
+        throw new Error(`Ollama responded with status: ${ollamaRes.status}. If running in cloud, configure a free Groq API key in the Admin Portal.`);
+      }
+
+      const reader = ollamaRes.body.getReader();
+      const decoder = new TextDecoder();
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split('\n').filter(line => line.trim());
+
+        for (const line of lines) {
+          try {
+            const parsed = JSON.parse(line);
+            const token = parsed.message?.content || '';
+            if (token) {
+              fullResponse += token;
+              res.write(`data: ${JSON.stringify({ chunk: token })}\n\n`);
+            }
+          } catch {}
+        }
       }
     }
 
@@ -363,6 +443,15 @@ app.post('/api/chat/stream', requireAuth, async (req, res) => {
   }
 });
 
+// Serve frontend static files in production / cloud deployment (e.g. Render)
+if (existsSync(distPath)) {
+  app.use(express.static(distPath));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api/')) return next();
+    res.sendFile(resolve(distPath, 'index.html'));
+  });
+}
+
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`ChatGPT Backend running on http://127.0.0.1:${PORT}`);
+  console.log(`ChatGPT Backend running on http://0.0.0.0:${PORT}`);
 });

@@ -12,11 +12,13 @@ import {
   AlertTriangle,
   RefreshCw,
   LogOut,
-  Clock
+  Clock,
+  Cpu,
+  ExternalLink
 } from 'lucide-react';
 
 export default function AdminModal({ isOpen, onClose, authFetch }) {
-  const [activeTab, setActiveTab] = useState('sessions'); // 'sessions' | 'stats' | 'password'
+  const [activeTab, setActiveTab] = useState('sessions'); // 'sessions' | 'stats' | 'security'
   const [sessions, setSessions] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -28,6 +30,10 @@ export default function AdminModal({ isOpen, onClose, authFetch }) {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [pwLoading, setPwLoading] = useState(false);
+
+  // Groq API Key state
+  const [groqKey, setGroqKey] = useState('');
+  const [groqLoading, setGroqLoading] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -45,7 +51,7 @@ export default function AdminModal({ isOpen, onClose, authFetch }) {
           const data = await res.json();
           setSessions(data);
         }
-      } else if (activeTab === 'stats') {
+      } else if (activeTab === 'stats' || activeTab === 'security') {
         const res = await authFetch('/api/admin/stats');
         if (res.ok) {
           const data = await res.json();
@@ -122,6 +128,31 @@ export default function AdminModal({ isOpen, onClose, authFetch }) {
     }
   };
 
+  const handleSaveGroqKey = async (e) => {
+    e.preventDefault();
+    setErrorMsg('');
+    setActionMsg('');
+
+    setGroqLoading(true);
+    try {
+      const res = await authFetch('/api/admin/groq-key', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: groqKey })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to save Groq key');
+      setActionMsg('Groq Cloud API Key saved! Cloud Llama models are now enabled.');
+      setGroqKey('');
+      loadData();
+      setTimeout(() => setActionMsg(''), 4000);
+    } catch (err) {
+      setErrorMsg(err.message);
+    } finally {
+      setGroqLoading(false);
+    }
+  };
+
   const formatTime = (ts) => {
     if (!ts) return 'Unknown';
     const diffSec = Math.floor((Date.now() - ts) / 1000);
@@ -144,7 +175,7 @@ export default function AdminModal({ isOpen, onClose, authFetch }) {
             </div>
             <div>
               <h2 className="text-base font-semibold text-white">Admin & Device Portal</h2>
-              <p className="text-xs text-gray-400">Manage sessions, security, and SQLite database</p>
+              <p className="text-xs text-gray-400">Manage sessions, security, cloud models, and SQLite</p>
             </div>
           </div>
           <button
@@ -178,19 +209,19 @@ export default function AdminModal({ isOpen, onClose, authFetch }) {
             }`}
           >
             <Database size={14} />
-            <span>Database & Storage</span>
+            <span>Database & Stats</span>
           </button>
 
           <button
-            onClick={() => setActiveTab('password')}
+            onClick={() => setActiveTab('security')}
             className={`flex items-center gap-2 border-b-2 py-3 px-4 text-xs font-medium transition-colors ${
-              activeTab === 'password'
+              activeTab === 'security'
                 ? 'border-[#10a37f] text-[#10a37f]'
                 : 'border-transparent text-gray-400 hover:text-white'
             }`}
           >
             <KeyRound size={14} />
-            <span>Security</span>
+            <span>Security & Cloud Keys</span>
           </button>
         </div>
 
@@ -320,59 +351,105 @@ export default function AdminModal({ isOpen, onClose, authFetch }) {
             </div>
           )}
 
-          {/* TAB 3: CHANGE MASTER PASSWORD */}
-          {activeTab === 'password' && (
-            <form onSubmit={handleChangePassword} className="space-y-4">
-              <div>
-                <label className="mb-1 block text-xs font-medium text-gray-300">
-                  Current Master Password
-                </label>
-                <input
-                  type="password"
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  required
-                  placeholder="Enter current password..."
-                  className="w-full rounded-xl border border-gray-700 bg-[#202124] px-3.5 py-2.5 text-sm text-white placeholder-gray-500 focus:border-[#10a37f] focus:outline-none"
-                />
-              </div>
+          {/* TAB 3: SECURITY & CLOUD KEYS */}
+          {activeTab === 'security' && (
+            <div className="space-y-6">
+              {/* Change Master Password */}
+              <form onSubmit={handleChangePassword} className="space-y-3">
+                <div className="text-xs font-semibold uppercase text-gray-400 pb-1 border-b border-gray-700/60">
+                  Change Master Password
+                </div>
 
-              <div>
-                <label className="mb-1 block text-xs font-medium text-gray-300">
-                  New Master Password
-                </label>
-                <input
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  required
-                  placeholder="Enter new password (min 4 characters)..."
-                  className="w-full rounded-xl border border-gray-700 bg-[#202124] px-3.5 py-2.5 text-sm text-white placeholder-gray-500 focus:border-[#10a37f] focus:outline-none"
-                />
-              </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-300">
+                    Current Master Password
+                  </label>
+                  <input
+                    type="password"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    required
+                    placeholder="Enter current password..."
+                    className="w-full rounded-xl border border-gray-700 bg-[#202124] px-3.5 py-2 text-sm text-white placeholder-gray-500 focus:border-[#10a37f] focus:outline-none"
+                  />
+                </div>
 
-              <div>
-                <label className="mb-1 block text-xs font-medium text-gray-300">
-                  Confirm New Master Password
-                </label>
-                <input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  required
-                  placeholder="Re-enter new password..."
-                  className="w-full rounded-xl border border-gray-700 bg-[#202124] px-3.5 py-2.5 text-sm text-white placeholder-gray-500 focus:border-[#10a37f] focus:outline-none"
-                />
-              </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-300">
+                    New Master Password
+                  </label>
+                  <input
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    required
+                    placeholder="Enter new password (min 4 characters)..."
+                    className="w-full rounded-xl border border-gray-700 bg-[#202124] px-3.5 py-2 text-sm text-white placeholder-gray-500 focus:border-[#10a37f] focus:outline-none"
+                  />
+                </div>
 
-              <button
-                type="submit"
-                disabled={pwLoading}
-                className="w-full rounded-xl bg-[#10a37f] py-2.5 text-sm font-semibold text-white hover:bg-[#0e8e6e] transition-colors disabled:opacity-50"
-              >
-                {pwLoading ? 'Updating Password...' : 'Update Master Password'}
-              </button>
-            </form>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-300">
+                    Confirm New Master Password
+                  </label>
+                  <input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required
+                    placeholder="Re-enter new password..."
+                    className="w-full rounded-xl border border-gray-700 bg-[#202124] px-3.5 py-2 text-sm text-white placeholder-gray-500 focus:border-[#10a37f] focus:outline-none"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={pwLoading}
+                  className="w-full rounded-xl bg-[#10a37f] py-2 text-sm font-semibold text-white hover:bg-[#0e8e6e] transition-colors disabled:opacity-50"
+                >
+                  {pwLoading ? 'Updating Password...' : 'Update Master Password'}
+                </button>
+              </form>
+
+              {/* Free Groq Cloud Key Configuration */}
+              <form onSubmit={handleSaveGroqKey} className="space-y-3 pt-2">
+                <div className="flex items-center justify-between pb-1 border-b border-gray-700/60">
+                  <span className="text-xs font-semibold uppercase text-gray-400">
+                    Groq Cloud API Key (Free AI Engine)
+                  </span>
+                  <a
+                    href="https://console.groq.com/keys"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-1 text-[11px] text-[#10a37f] hover:underline"
+                  >
+                    <span>Get Free Key (0$)</span>
+                    <ExternalLink size={10} />
+                  </a>
+                </div>
+
+                <p className="text-xs text-gray-400">
+                  Required when deploying to Render or the cloud where your Mac's Ollama is offline. Groq provides 14,400 free requests/day at 800 tokens/sec.
+                </p>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="password"
+                    value={groqKey}
+                    onChange={(e) => setGroqKey(e.target.value)}
+                    placeholder={stats?.hasGroqKey ? '•••••••••••••••• (Key Configured)' : 'Paste gsk_... key'}
+                    className="flex-1 rounded-xl border border-gray-700 bg-[#202124] px-3.5 py-2 text-sm text-white placeholder-gray-500 focus:border-[#10a37f] focus:outline-none"
+                  />
+                  <button
+                    type="submit"
+                    disabled={groqLoading || !groqKey.trim()}
+                    className="rounded-xl bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-500 transition-colors disabled:opacity-50"
+                  >
+                    {groqLoading ? 'Saving...' : 'Save Key'}
+                  </button>
+                </div>
+              </form>
+            </div>
           )}
         </div>
       </div>
