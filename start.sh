@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Start ChatGPT Web App (Backend + Frontend + Public Cloudflare Tunnel)
+# Start BalaGPT (Backend + Frontend + Public Cloudflare Tunnel)
 
 set -e
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export PATH="$HOME/.local/node/bin:$PATH"
 
 echo "=================================================="
-echo "🚀 Starting Full-Stack ChatGPT Web App"
+echo "🚀 Starting BalaGPT Personal AI"
 echo "   Backend:  http://127.0.0.1:3001"
 echo "   Frontend: http://127.0.0.1:5174"
 echo "   Database: SQLite (backend/chat.db)"

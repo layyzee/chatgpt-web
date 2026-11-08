@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: chatgpt-web
+    name: balagpt
     runtime: node
     plan: free
     region: oregon

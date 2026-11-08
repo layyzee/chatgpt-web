@@ -72,11 +72,11 @@ export default function AuthScreen({ isSetup, onAuthSuccess }) {
         {/* Title & Description */}
         <div className="mb-8 text-center">
           <h1 className="text-2xl font-bold tracking-tight">
-            {isSetup ? 'ChatGPT Access' : 'Create Master Password'}
+            {isSetup ? 'BalaGPT Access' : 'Create Master Password'}
           </h1>
           <p className="mt-2 text-sm text-gray-400">
             {isSetup
-              ? 'This private instance is password protected. Enter your password to unlock.'
+              ? 'This private instance is password protected. Enter your password to unlock BalaGPT.'
               : 'Set a secret password to prevent unauthorized access over the public tunnel.'}
           </p>
         </div>
@@ -139,7 +139,7 @@ export default function AuthScreen({ isSetup, onAuthSuccess }) {
               <Loader2 size={18} className="animate-spin" />
             ) : (
               <>
-                <span>{isSetup ? 'Unlock ChatGPT' : 'Secure & Continue'}</span>
+                <span>{isSetup ? 'Unlock BalaGPT' : 'Secure & Continue'}</span>
                 <ArrowRight size={16} />
               </>
             )}

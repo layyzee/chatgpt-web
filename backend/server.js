@@ -454,5 +454,5 @@ if (existsSync(distPath)) {
 }
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`ChatGPT Backend running on http://0.0.0.0:${PORT}`);
+  console.log(`BalaGPT Backend running on http://0.0.0.0:${PORT}`);
 });

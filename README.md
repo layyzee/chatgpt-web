@@ -1,19 +1,20 @@
-# 🤖 ChatGPT Web Clone (Full-Stack + Local AI)
+# 🤖 BalaGPT (Full-Stack Personal AI)
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/layyzee/chatgpt-web)
 
-A production-grade ChatGPT clone with persistent SQLite memory, real-time word-by-word streaming, live web search, document Q&A, voice chat, session management, and zero API costs. Powered locally by **Ollama (Llama 3.2 & Qwen 2.5 Coder)**.
+A high-performance personal AI with persistent SQLite memory, real-time word-by-word streaming, live web search, document Q&A, voice chat, session management, and zero API costs. Powered locally by **Ollama (Llama 3.2 & Qwen 2.5 Coder)** and in the cloud by **Groq (GPT-OSS 120B & Qwen 27B)**.
 
 ---
 
 ## ✨ Features & Superpowers
 
-- **🧠 100% Free & Local AI Engines:**
-  - **Llama 3.2 (3B):** General reasoning, chat, and explanation.
-  - **Qwen 2.5 Coder (1.5B):** High-speed code writing, debugging, and syntax expert.
-  - Zero API fees, zero token rate limits, zero privacy leaks. Everything runs on your Mac.
+- **🧠 Multi-Model AI Engine:**
+  - **GPT-OSS (120B):** Frontier 120-Billion parameter cloud model running at 800+ tokens/sec via Groq.
+  - **Llama 3.2 (3B):** General offline reasoning running locally on your Mac via Ollama.
+  - **Qwen 2.5 Coder (1.5B):** High-speed code writing, debugging, and syntax specialist.
+  - Zero API fees, zero token rate limits, zero privacy leaks.
 - **🌐 Real-Time Live Web Search:**
-  - Toggle the **Web Search** button to let local models query the live internet via DuckDuckGo in real-time.
+  - Toggle the **Web Search** button to let BalaGPT query the live internet via DuckDuckGo in real-time.
   - Perfect for current events, latest sports scores, and recent documentation.
 - **📥 Export Chats (Markdown & PDF):**
   - Download formatted `.md` files or print directly to clean PDF documents with one click.
@@ -37,19 +38,26 @@ A production-grade ChatGPT clone with persistent SQLite memory, real-time word-b
 
 ## 🚀 How to Run
 
-### Start App:
+### Start BalaGPT:
 ```bash
 ./start.sh
 ```
 - **Frontend:** [http://localhost:5174](http://localhost:5174)
 - **Backend API:** [http://localhost:3001](http://localhost:3001)
 
-### Stop App (Zero Battery Drain):
+### Stop BalaGPT (Zero Battery Drain):
 Whenever you are done testing, run:
 ```bash
 ./stop.sh
 ```
 This terminates all backend/frontend processes, kills the Cloudflare tunnel, and unloads AI models from unified RAM—bringing CPU, GPU, and battery drain down to **0%**.
+
+---
+
+## ☁️ 1-Click Cloud Deployment (Render.com)
+
+Click the **Deploy to Render** button above or use:
+👉 **[Deploy BalaGPT to Render](https://render.com/deploy?repo=https://github.com/layyzee/chatgpt-web)**
 
 ---
 

@@ -1,7 +1,7 @@
 {
-  "name": "chatgpt-web",
+  "name": "balagpt",
   "version": "1.0.0",
-  "description": "Full-stack ChatGPT Web clone with SQLite persistence and local/cloud AI streaming",
+  "description": "Full-stack BalaGPT personal AI with SQLite persistence and local/cloud AI streaming",
   "scripts": {
     "build": "npm run render:build",
     "start": "npm run render:start",

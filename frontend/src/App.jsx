@@ -266,7 +266,7 @@ export default function App() {
   if (checkingAuth) {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-gpt-main text-gray-400">
-        <div className="animate-pulse text-sm">Loading ChatGPT...</div>
+        <div className="animate-pulse text-sm">Loading BalaGPT...</div>
       </div>
     );
   }

@@ -3,7 +3,7 @@
 # This completely frees up your Mac's RAM, GPU, and CPU for zero battery drain.
 
 echo "=================================================="
-echo "🛑 Shutting Down ChatGPT Web & Freeing Up Resources"
+echo "🛑 Shutting Down BalaGPT & Freeing Up Resources"
 echo "=================================================="
 
 # 1. Kill Node backend on port 3001

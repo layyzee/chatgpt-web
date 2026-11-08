@@ -135,7 +135,7 @@ export default function MessageItem({ message, isStreaming }) {
         {/* Content */}
         <div className="flex-1 overflow-hidden min-w-0">
           <div className="font-semibold text-xs text-gray-400 mb-1">
-            {isUser ? 'You' : 'ChatGPT'}
+            {isUser ? 'You' : 'BalaGPT'}
           </div>
 
           <FormattedContent text={message.content} />

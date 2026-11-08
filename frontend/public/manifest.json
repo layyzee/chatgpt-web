@@ -1,7 +1,7 @@
 {
-  "name": "ChatGPT Web",
-  "short_name": "ChatGPT",
-  "description": "Full-stack ChatGPT clone powered by local Ollama AI",
+  "name": "BalaGPT",
+  "short_name": "BalaGPT",
+  "description": "Full-stack personal AI powered by local Ollama & Groq Cloud",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#202123",

@@ -181,11 +181,11 @@ export default function ChatView({
     setShowExportMenu(false);
     if (messages.length === 0) return;
 
-    const title = currentTitle || 'ChatGPT Conversation';
+    const title = currentTitle || 'BalaGPT Conversation';
     let content = `# ${title}\n\n*Exported on ${new Date().toLocaleString()}*\n\n---\n\n`;
 
     messages.forEach((m) => {
-      const speaker = m.role === 'user' ? '👤 **You**' : '🤖 **ChatGPT**';
+      const speaker = m.role === 'user' ? '👤 **You**' : '🤖 **BalaGPT**';
       content += `### ${speaker}\n\n${m.content}\n\n---\n\n`;
     });
 
@@ -413,8 +413,8 @@ export default function ChatView({
                 isListening
                   ? 'Listening to your voice...'
                   : webSearchEnabled
-                  ? 'Ask anything (will search live web)...'
-                  : 'Message ChatGPT...'
+                  ? 'Ask BalaGPT anything (will search live web)...'
+                  : 'Message BalaGPT...'
               }
               className="w-full bg-transparent text-gray-100 placeholder-gray-400 text-sm py-2.5 pl-4 pr-12 focus:outline-none resize-none max-h-48 overflow-y-auto"
             />
@@ -448,7 +448,7 @@ export default function ChatView({
           </form>
 
           <div className="text-[10px] sm:text-[11px] text-gray-500 text-center mt-2 flex items-center justify-center gap-2">
-            <span>ChatGPT can make mistakes. Verify important info.</span>
+            <span>BalaGPT can make mistakes. Verify important info.</span>
           </div>
         </div>
       </div>
