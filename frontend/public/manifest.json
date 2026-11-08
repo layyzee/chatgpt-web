@@ -1,0 +1,22 @@
+{
+  "name": "ChatGPT Web",
+  "short_name": "ChatGPT",
+  "description": "Full-stack ChatGPT clone powered by local Ollama AI",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#202123",
+  "theme_color": "#202123",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

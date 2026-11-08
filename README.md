@@ -1,28 +1,32 @@
 # 🤖 ChatGPT Web Clone (Full-Stack + Local AI)
 
-A full-fledged ChatGPT clone with persistent SQLite memory, real-time word-by-word streaming, code highlighting with 1-click copy, and zero API costs. Powered locally by **Ollama (Llama 3.2 3B)** or switchable to cloud models.
+A production-grade ChatGPT clone with persistent SQLite memory, real-time word-by-word streaming, voice dictation, speech synthesis, document Q&A, and zero API costs. Powered locally by **Ollama (Llama 3.2 & Qwen 2.5 Coder)**.
 
 ---
 
-## ✨ Features
+## ✨ Features & Superpowers
 
-- **🧠 100% Free & Local AI Engine:**
-  - Uses local **Llama 3.2 (3B)** via Ollama.
-  - Zero API fees, zero token rate limits, zero privacy leaks. Everything stays on your machine.
-- **⚡ Real-Time Streaming:**
-  - Token-by-token streaming via Server-Sent Events (SSE).
-  - Typewriter rendering with stop-generation support.
+- **🧠 100% Free & Local AI Engines:**
+  - **Llama 3.2 (3B):** General reasoning, chat, and explanation.
+  - **Qwen 2.5 Coder (1.5B):** High-speed code writing, debugging, and syntax expert.
+  - Zero API fees, zero token rate limits, zero privacy leaks. Everything runs on your Mac.
+- **🎙️ Voice Chat (Speech-to-Text & Text-to-Speech):**
+  - **Dictation:** Tap the microphone icon to speak your prompts.
+  - **Read Aloud:** Tap the speaker icon on any assistant message to hear it read out loud naturally.
+- **📎 Document & Code Attachment (Document Q&A):**
+  - Attach `.py`, `.js`, `.txt`, `.md`, `.json`, `.csv`, `.sql` files directly to your prompt.
+  - Ask the local model to analyze, refactor, debug, or summarize your documents.
+- **🔒 Master Password Protection:**
+  - Secure lock screen with scrypt-hashed password encryption and 30-day session tokens.
+  - Prevents unauthorized access over the public tunnel.
+- **📱 PWA (Installable Native App):**
+  - Includes Web App Manifest and Service Worker.
+  - Tap **"Add to Home Screen"** on iOS Safari or Android Chrome to use it like a full-screen native mobile app.
 - **💾 Full SQLite Persistence:**
-  - Stores all chat history, conversations, and timestamps in a local SQLite database (`chat.db`).
+  - Stores all chat history, conversations, and timestamps in a local SQLite database (`backend/chat.db`).
   - Native `node:sqlite` implementation with zero external C++ build dependencies.
-- **🎨 Modern ChatGPT Dark UI:**
-  - Responsive sidebar with conversation list.
-  - Rename, delete, and search past chats.
-  - Formatted Markdown rendering with syntax highlighting.
-  - Code block headers with language badges and instant **"Copy code"** buttons.
-  - Auto-growing text input.
 - **🌐 Mobile & Remote Access Ready:**
-  - Built-in Cloudflare Tunnel integration for instant, secure public HTTPS access on iOS/Android from anywhere without port forwarding.
+  - Integrated Cloudflare Tunnel for instant, secure public HTTPS access from anywhere.
 
 ---
 
@@ -31,18 +35,24 @@ A full-fledged ChatGPT clone with persistent SQLite memory, real-time word-by-wo
 ```
 chatgpt-web/
 ├── backend/
-│   ├── server.js        # Express API + SSE streaming router
-│   ├── db.js            # Native SQLite database schema & queries
+│   ├── server.js        # Express API, auth middleware & SSE streaming router
+│   ├── db.js            # Native SQLite database schema, sessions & queries
 │   └── package.json
 ├── frontend/
+│   ├── public/
+│   │   ├── manifest.json # PWA manifest
+│   │   ├── sw.js         # Service Worker
+│   │   └── icon-*.png    # High-res app icons
 │   ├── src/
-│   │   ├── App.jsx      # Main ChatGPT interface & state
-│   │   ├── main.jsx
-│   │   └── index.css    # Tailwind styling
-│   ├── index.html
-│   ├── vite.config.js
+│   │   ├── App.jsx       # State management, responsive drawer & auth check
+│   │   ├── components/
+│   │   │   ├── AuthScreen.jsx   # Master password lock screen
+│   │   │   ├── Sidebar.jsx      # Mobile drawer + Model selector + Sign Out
+│   │   │   ├── ChatView.jsx     # Voice mic, file attachment & prompt input
+│   │   │   └── MessageItem.jsx  # Markdown, syntax highlight & speech readout
+│   │   └── main.jsx
 │   └── package.json
-├── start.sh             # 1-click launcher (Ollama + Backend + Frontend + Tunnel)
+├── start.sh              # 1-click launcher (Ollama + Backend + Frontend + Tunnel)
 └── README.md
 ```
 
@@ -55,6 +65,7 @@ chatgpt-web/
 - **Ollama**: [Download Ollama](https://ollama.com/)
   ```bash
   ollama pull llama3.2:3b
+  ollama pull qwen2.5-coder:1.5b
   ```
 
 ### 2. Installation
@@ -83,13 +94,16 @@ chmod +x start.sh
 
 ---
 
-## 📱 Mobile Access (Optional Cloudflare Tunnel)
+## 📱 How to Install on Your Phone (PWA)
 
-To access your local ChatGPT instance on your phone over 5G/WiFi:
-```bash
-cloudflared tunnel --url http://127.0.0.1:5174
-```
-Scan the generated QR code or open the `*.trycloudflare.com` URL on your phone!
+1. Open your Cloudflare Tunnel URL in **Safari (iOS)** or **Chrome (Android)**.
+2. **On iPhone/iPad (Safari):**
+   - Tap the **Share** button (box with an arrow pointing up).
+   - Scroll down and tap **"Add to Home Screen"**.
+3. **On Android (Chrome):**
+   - Tap the three dots (⋮) menu or tap the **"Install App"** prompt.
+   - Tap **"Add to Home Screen"**.
+4. The ChatGPT app icon will appear directly on your home screen and open in full-screen mode without browser URL bars!
 
 ---
 
