@@ -269,8 +269,9 @@ app.get('/api/models', requireAuth, async (req, res) => {
 
   if (groqKey) {
     cloudModels = [
-      { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B (Groq Cloud 800 t/s)', provider: 'groq' },
-      { id: 'llama-3.1-8b-instant', name: 'Llama 3.1 8B (Groq Cloud Fast)', provider: 'groq' }
+      { id: 'openai/gpt-oss-120b', name: 'GPT-OSS 120B (Groq Cloud 800 t/s)', provider: 'groq' },
+      { id: 'qwen/qwen3.8-27b', name: 'Qwen 3.8 27B (Groq Cloud)', provider: 'groq' },
+      { id: 'openai/gpt-oss-20b', name: 'GPT-OSS 20B (Groq Cloud Fast)', provider: 'groq' }
     ];
   } else if (!ollamaOnline) {
     cloudModels = [
@@ -279,8 +280,8 @@ app.get('/api/models', requireAuth, async (req, res) => {
   }
 
   const models = [
-    ...ollamaModels,
-    ...cloudModels
+    ...cloudModels,
+    ...ollamaModels
   ];
 
   res.json({ models, ollamaOnline, hasGroqKey: !!groqKey });
@@ -288,7 +289,7 @@ app.get('/api/models', requireAuth, async (req, res) => {
 
 // Streaming chat endpoint with Server-Sent Events (SSE) + Live Web Search
 app.post('/api/chat/stream', requireAuth, async (req, res) => {
-  const { conversationId, message, model = 'llama3.2:3b', webSearch = false } = req.body;
+  const { conversationId, message, model = 'openai/gpt-oss-120b', webSearch = false } = req.body;
 
   if (!conversationId || !message) {
     return res.status(400).json({ error: 'conversationId and message are required' });
@@ -337,12 +338,12 @@ app.post('/api/chat/stream', requireAuth, async (req, res) => {
 
   // Detect if Groq cloud should be used
   const groqKey = process.env.GROQ_API_KEY || db.getConfig('groq_api_key');
-  const isGroqModel = model.startsWith('llama-3.3') || model.startsWith('llama-3.1') || model === 'cloud-setup-required';
+  const isGroqModel = model.startsWith('openai/') || model.startsWith('qwen/') || (!model.includes(':') && groqKey);
 
   try {
     if (isGroqModel && groqKey) {
       // Stream from Groq Cloud (Free 800 tokens/sec Llama 3)
-      const targetModel = model === 'cloud-setup-required' ? 'llama-3.3-70b-versatile' : model;
+      const targetModel = model === 'cloud-setup-required' ? 'openai/gpt-oss-120b' : model;
       const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
         headers: {
