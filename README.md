@@ -1,8 +1,12 @@
 # 🤖 BalaGPT (Full-Stack Personal AI)
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/layyzee/chatgpt-web)
+[![Documentation](https://img.shields.io/badge/Documentation-Complete%20Architecture%20Guide-blue)](PROJECT_DOCUMENTATION.md)
 
 A high-performance personal AI with persistent SQLite memory, real-time word-by-word streaming, live web search, document Q&A, voice chat, session management, and zero API costs. Powered locally by **Ollama (Llama 3.2 & Qwen 2.5 Coder)** and in the cloud by **Groq (GPT-OSS 120B & Qwen 27B)**.
+
+> 📖 **Looking for full system architecture, database ER diagrams, and technical justifications?**  
+> Check out the complete [**Project Technical Documentation & Architecture Guide**](PROJECT_DOCUMENTATION.md).
 
 ---
 
