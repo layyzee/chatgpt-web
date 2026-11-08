@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ArrowUp, Square, Sparkles, Code2, Compass, Lightbulb, Bot } from 'lucide-react';
+import { ArrowUp, Square, Sparkles, Code2, Compass, Lightbulb, Bot, Menu, Plus } from 'lucide-react';
 import MessageItem from './MessageItem.jsx';
 
 const SUGGESTIONS = [
@@ -31,7 +31,9 @@ export default function ChatView({
   onSend,
   onStop,
   currentTitle,
-  selectedModel
+  selectedModel,
+  onOpenSidebar,
+  onNewChat
 }) {
   const [input, setInput] = useState('');
   const messagesEndRef = useRef(null);
@@ -65,52 +67,76 @@ export default function ChatView({
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-gpt-main relative overflow-hidden">
+    <div className="flex-1 flex flex-col h-full bg-gpt-main relative overflow-hidden w-full">
       {/* Top Header */}
-      <header className="h-12 border-b border-gpt-border flex items-center justify-between px-4 text-xs text-gray-400 bg-gpt-main/80 backdrop-blur shrink-0 z-10">
-        <div className="font-medium text-gray-200 truncate max-w-md">
-          {currentTitle || 'New chat'}
+      <header className="h-12 border-b border-gpt-border flex items-center justify-between px-3 md:px-4 text-xs text-gray-400 bg-gpt-main/80 backdrop-blur shrink-0 z-10">
+        <div className="flex items-center gap-2 truncate">
+          {/* Mobile Hamburger Menu Toggle */}
+          <button
+            onClick={onOpenSidebar}
+            className="p-1.5 rounded-lg border border-gray-700 hover:bg-gpt-hover text-gray-300 hover:text-white transition-colors md:hidden shrink-0"
+            title="Open chats menu"
+          >
+            <Menu size={18} />
+          </button>
+
+          <div className="font-medium text-gray-200 truncate max-w-[180px] sm:max-w-xs md:max-w-md">
+            {currentTitle || 'New chat'}
+          </div>
         </div>
-        <div className="flex items-center gap-1.5 bg-black/40 px-2.5 py-1 rounded-full text-[11px] border border-gray-700">
-          <span className="w-1.5 h-1.5 rounded-full bg-green-400"></span>
-          <span>{selectedModel}</span>
+
+        <div className="flex items-center gap-2">
+          {/* Mobile Quick New Chat Button */}
+          <button
+            onClick={onNewChat}
+            className="p-1.5 rounded-lg border border-gray-700 hover:bg-gpt-hover text-gray-300 hover:text-white transition-colors md:hidden shrink-0"
+            title="New Chat"
+          >
+            <Plus size={16} />
+          </button>
+
+          {/* Model badge */}
+          <div className="flex items-center gap-1.5 bg-black/40 px-2.5 py-1 rounded-full text-[11px] border border-gray-700 shrink-0">
+            <span className="w-1.5 h-1.5 rounded-full bg-green-400"></span>
+            <span className="truncate max-w-[120px] sm:max-w-none">{selectedModel}</span>
+          </div>
         </div>
       </header>
 
       {/* Messages area or Empty State */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto px-2 sm:px-4">
         {messages.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center px-4 max-w-2xl mx-auto text-center">
+          <div className="h-full flex flex-col items-center justify-center px-4 max-w-2xl mx-auto text-center py-8">
             <div className="w-12 h-12 rounded-full bg-gpt-green/20 text-gpt-green flex items-center justify-center mb-4">
               <Bot size={28} />
             </div>
-            <h1 className="text-2xl font-semibold text-white mb-2">
+            <h1 className="text-xl sm:text-2xl font-semibold text-white mb-2">
               What can I help with today?
             </h1>
-            <p className="text-sm text-gray-400 mb-8 max-w-md">
+            <p className="text-xs sm:text-sm text-gray-400 mb-8 max-w-md">
               Powered by local offline models on your Mac. Unlimited conversations, zero cost.
             </p>
 
             {/* Prompt cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 w-full">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3 w-full">
               {SUGGESTIONS.map((item, idx) => {
                 const Icon = item.icon;
                 return (
                   <button
                     key={idx}
                     onClick={() => onSend(`${item.title}: ${item.subtitle}`)}
-                    className="flex flex-col items-start p-3.5 rounded-xl border border-gray-700 hover:bg-gpt-hover text-left transition-all group"
+                    className="flex flex-col items-start p-3 sm:p-3.5 rounded-xl border border-gray-700 hover:bg-gpt-hover text-left transition-all group"
                   >
                     <Icon size={18} className="text-gpt-green mb-1.5 group-hover:scale-110 transition-transform" />
-                    <span className="text-sm font-medium text-gray-200">{item.title}</span>
-                    <span className="text-xs text-gray-400">{item.subtitle}</span>
+                    <span className="text-xs sm:text-sm font-medium text-gray-200">{item.title}</span>
+                    <span className="text-[11px] sm:text-xs text-gray-400">{item.subtitle}</span>
                   </button>
                 );
               })}
             </div>
           </div>
         ) : (
-          <div className="pb-36 pt-2">
+          <div className="pb-36 pt-2 max-w-3xl mx-auto w-full">
             {messages.map((msg, index) => (
               <MessageItem
                 key={msg.id || index}
@@ -124,7 +150,7 @@ export default function ChatView({
       </div>
 
       {/* Floating Input Bar */}
-      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-gpt-main via-gpt-main/90 to-transparent pt-6 pb-4 px-4">
+      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-gpt-main via-gpt-main/90 to-transparent pt-6 pb-3 sm:pb-4 px-3 sm:px-4 z-20">
         <div className="max-w-3xl mx-auto">
           <form
             onSubmit={handleSubmit}
@@ -137,7 +163,7 @@ export default function ChatView({
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Message ChatGPT..."
-              className="w-full bg-transparent text-gray-100 placeholder-gray-400 text-sm py-3.5 pl-4 pr-12 focus:outline-none resize-none max-h-52 overflow-y-auto"
+              className="w-full bg-transparent text-gray-100 placeholder-gray-400 text-sm py-3.5 pl-4 pr-12 focus:outline-none resize-none max-h-48 overflow-y-auto"
             />
 
             {/* Send or Stop button */}
@@ -168,7 +194,7 @@ export default function ChatView({
             </div>
           </form>
 
-          <div className="text-[11px] text-gray-500 text-center mt-2">
+          <div className="text-[10px] sm:text-[11px] text-gray-500 text-center mt-2">
             ChatGPT can make mistakes. Verify important information.
           </div>
         </div>

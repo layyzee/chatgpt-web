@@ -9,8 +9,81 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
+// --- Authentication Middleware ---
+function requireAuth(req, res, next) {
+  if (!db.isAuthSetup()) {
+    // If not setup yet, reject protected operations until setup is complete
+    return res.status(401).json({ error: 'Setup required', requiresSetup: true });
+  }
+
+  const authHeader = req.headers.authorization;
+  const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+
+  if (!token || !db.validateSession(token)) {
+    return res.status(401).json({ error: 'Unauthorized: Session invalid or expired' });
+  }
+
+  next();
+}
+
+// --- Auth Endpoints (Public) ---
+
+app.get('/api/auth/status', (req, res) => {
+  try {
+    const isSetup = db.isAuthSetup();
+    const authHeader = req.headers.authorization;
+    const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    const authenticated = isSetup ? db.validateSession(token) : false;
+    res.json({ isSetup, authenticated });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/auth/setup', (req, res) => {
+  try {
+    const { password } = req.body;
+    if (!password || password.trim().length < 4) {
+      return res.status(400).json({ error: 'Password must be at least 4 characters long' });
+    }
+    const session = db.setupPassword(password.trim());
+    res.json({ success: true, ...session });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.post('/api/auth/login', (req, res) => {
+  try {
+    const { password } = req.body;
+    if (!password) {
+      return res.status(400).json({ error: 'Password is required' });
+    }
+    const session = db.loginWithPassword(password.trim());
+    if (!session) {
+      return res.status(401).json({ error: 'Incorrect password. Access denied.' });
+    }
+    res.json({ success: true, ...session });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.post('/api/auth/logout', (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    db.deleteSession(token);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- Protected App Endpoints ---
+
 // List all conversations
-app.get('/api/conversations', (req, res) => {
+app.get('/api/conversations', requireAuth, (req, res) => {
   try {
     const list = db.getConversations();
     res.json(list);
@@ -20,7 +93,7 @@ app.get('/api/conversations', (req, res) => {
 });
 
 // Create new conversation
-app.post('/api/conversations', (req, res) => {
+app.post('/api/conversations', requireAuth, (req, res) => {
   try {
     const id = req.body.id || randomUUID();
     const title = req.body.title || 'New Chat';
@@ -32,7 +105,7 @@ app.post('/api/conversations', (req, res) => {
 });
 
 // Get messages for a conversation
-app.get('/api/conversations/:id/messages', (req, res) => {
+app.get('/api/conversations/:id/messages', requireAuth, (req, res) => {
   try {
     const messages = db.getMessages(req.params.id);
     res.json(messages);
@@ -42,7 +115,7 @@ app.get('/api/conversations/:id/messages', (req, res) => {
 });
 
 // Rename conversation
-app.patch('/api/conversations/:id', (req, res) => {
+app.patch('/api/conversations/:id', requireAuth, (req, res) => {
   try {
     const { title } = req.body;
     db.updateConversationTitle(req.params.id, title);
@@ -53,7 +126,7 @@ app.patch('/api/conversations/:id', (req, res) => {
 });
 
 // Delete conversation
-app.delete('/api/conversations/:id', (req, res) => {
+app.delete('/api/conversations/:id', requireAuth, (req, res) => {
   try {
     db.deleteConversation(req.params.id);
     res.json({ success: true });
@@ -63,7 +136,7 @@ app.delete('/api/conversations/:id', (req, res) => {
 });
 
 // Check available models & Ollama status
-app.get('/api/models', async (req, res) => {
+app.get('/api/models', requireAuth, async (req, res) => {
   let ollamaModels = [];
   let ollamaOnline = false;
 
@@ -89,7 +162,7 @@ app.get('/api/models', async (req, res) => {
 });
 
 // Streaming chat endpoint with Server-Sent Events (SSE)
-app.post('/api/chat/stream', async (req, res) => {
+app.post('/api/chat/stream', requireAuth, async (req, res) => {
   const { conversationId, message, model = 'llama3.2:3b' } = req.body;
 
   if (!conversationId || !message) {
@@ -174,11 +247,10 @@ app.post('/api/chat/stream', async (req, res) => {
   } catch (err) {
     console.error('Streaming error:', err);
     res.write(`data: ${JSON.stringify({ error: err.message })}\n\n`);
-    res.write('data: [DONE]\n\n');
     res.end();
   }
 });
 
-app.listen(PORT, '127.0.0.1', () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`ChatGPT Backend running on http://127.0.0.1:${PORT}`);
 });

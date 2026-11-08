@@ -1,25 +1,87 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Sidebar from './components/Sidebar.jsx';
 import ChatView from './components/ChatView.jsx';
+import AuthScreen from './components/AuthScreen.jsx';
 
 export default function App() {
+  const [token, setToken] = useState(() => localStorage.getItem('chatgpt_token') || '');
+  const [isAuthSetup, setIsAuthSetup] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
+
   const [conversations, setConversations] = useState([]);
   const [activeId, setActiveId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [models, setModels] = useState([{ id: 'llama3.2:3b', name: 'Llama 3.2 3B (Local 100% Offline)' }]);
   const [selectedModel, setSelectedModel] = useState('llama3.2:3b');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
   const abortControllerRef = useRef(null);
 
-  // Load conversations and models on mount
+  // Helper for authenticated fetch
+  const authFetch = async (url, options = {}) => {
+    const headers = {
+      ...options.headers,
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    };
+    const res = await fetch(url, { ...options, headers });
+    if (res.status === 401) {
+      localStorage.removeItem('chatgpt_token');
+      setToken('');
+      setIsAuthenticated(false);
+    }
+    return res;
+  };
+
+  // Check auth status on mount or token change
   useEffect(() => {
-    fetchConversations();
-    fetchModels();
-  }, []);
+    checkAuthStatus();
+  }, [token]);
+
+  const checkAuthStatus = async () => {
+    setCheckingAuth(true);
+    try {
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const res = await fetch('/api/auth/status', { headers });
+      if (res.ok) {
+        const data = await res.json();
+        setIsAuthSetup(data.isSetup);
+        setIsAuthenticated(data.authenticated);
+        if (data.authenticated) {
+          fetchConversations();
+          fetchModels();
+        }
+      }
+    } catch (err) {
+      console.error('Error checking auth:', err);
+    } finally {
+      setCheckingAuth(false);
+    }
+  };
+
+  const handleAuthSuccess = (newToken) => {
+    localStorage.setItem('chatgpt_token', newToken);
+    setToken(newToken);
+    setIsAuthenticated(true);
+    setIsAuthSetup(true);
+  };
+
+  const handleLogout = async () => {
+    try {
+      await authFetch('/api/auth/logout', { method: 'POST' });
+    } catch {}
+    localStorage.removeItem('chatgpt_token');
+    setToken('');
+    setIsAuthenticated(false);
+    setConversations([]);
+    setMessages([]);
+    setActiveId(null);
+  };
 
   const fetchConversations = async () => {
     try {
-      const res = await fetch('/api/conversations');
+      const res = await authFetch('/api/conversations');
       if (res.ok) {
         const data = await res.json();
         setConversations(data);
@@ -31,7 +93,7 @@ export default function App() {
 
   const fetchModels = async () => {
     try {
-      const res = await fetch('/api/models');
+      const res = await authFetch('/api/models');
       if (res.ok) {
         const data = await res.json();
         if (data.models && data.models.length > 0) {
@@ -48,7 +110,7 @@ export default function App() {
     if (isGenerating) handleStop();
     setActiveId(id);
     try {
-      const res = await fetch(`/api/conversations/${id}/messages`);
+      const res = await authFetch(`/api/conversations/${id}/messages`);
       if (res.ok) {
         const data = await res.json();
         setMessages(data);
@@ -66,7 +128,7 @@ export default function App() {
 
   const handleDeleteConversation = async (id) => {
     try {
-      await fetch(`/api/conversations/${id}`, { method: 'DELETE' });
+      await authFetch(`/api/conversations/${id}`, { method: 'DELETE' });
       setConversations(prev => prev.filter(c => c.id !== id));
       if (activeId === id) {
         handleNewChat();
@@ -78,7 +140,7 @@ export default function App() {
 
   const handleRenameConversation = async (id, newTitle) => {
     try {
-      await fetch(`/api/conversations/${id}`, {
+      await authFetch(`/api/conversations/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title: newTitle })
@@ -119,7 +181,7 @@ export default function App() {
     abortControllerRef.current = new AbortController();
 
     try {
-      const res = await fetch('/api/chat/stream', {
+      const res = await authFetch('/api/chat/stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -187,10 +249,33 @@ export default function App() {
     }
   };
 
+  // If loading initial auth state, show minimalist dark splash
+  if (checkingAuth) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-gpt-main text-gray-400">
+        <div className="animate-pulse text-sm">Loading ChatGPT...</div>
+      </div>
+    );
+  }
+
+  // If not authenticated, show password / setup lock screen
+  if (!isAuthenticated) {
+    return <AuthScreen isSetup={isAuthSetup} onAuthSuccess={handleAuthSuccess} />;
+  }
+
   const currentTitle = conversations.find(c => c.id === activeId)?.title;
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-gpt-main">
+    <div className="flex h-screen w-screen overflow-hidden bg-gpt-main relative">
+      {/* Mobile Drawer Backdrop */}
+      {sidebarOpen && (
+        <div
+          onClick={() => setSidebarOpen(false)}
+          className="fixed inset-0 bg-black/60 z-40 backdrop-blur-sm md:hidden transition-opacity"
+        />
+      )}
+
+      {/* Sidebar Drawer */}
       <Sidebar
         conversations={conversations}
         activeId={activeId}
@@ -201,8 +286,12 @@ export default function App() {
         models={models}
         selectedModel={selectedModel}
         onSelectModel={setSelectedModel}
-        isOpen={true}
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        onLogout={handleLogout}
       />
+
+      {/* Main Chat Interface */}
       <ChatView
         messages={messages}
         isGenerating={isGenerating}
@@ -210,6 +299,8 @@ export default function App() {
         onStop={handleStop}
         currentTitle={currentTitle}
         selectedModel={selectedModel}
+        onOpenSidebar={() => setSidebarOpen(true)}
+        onNewChat={handleNewChat}
       />
     </div>
   );

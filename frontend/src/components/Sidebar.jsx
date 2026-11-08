@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, MessageSquare, Trash2, Edit2, Check, X, Cpu, ChevronDown } from 'lucide-react';
+import { Plus, MessageSquare, Trash2, Edit2, Check, X, Cpu, LogOut, Shield } from 'lucide-react';
 
 export default function Sidebar({
   conversations,
@@ -11,7 +11,9 @@ export default function Sidebar({
   models,
   selectedModel,
   onSelectModel,
-  isOpen
+  isOpen,
+  onClose,
+  onLogout
 }) {
   const [editingId, setEditingId] = useState(null);
   const [editTitle, setEditTitle] = useState('');
@@ -35,20 +37,41 @@ export default function Sidebar({
     setEditingId(null);
   };
 
+  const handleConversationClick = (id) => {
+    onSelect(id);
+    if (onClose) onClose(); // Auto-close drawer on mobile on item selection
+  };
+
+  const handleNewChatClick = () => {
+    onNewChat();
+    if (onClose) onClose(); // Auto-close drawer on mobile on new chat
+  };
+
   return (
-    <aside className={`w-64 bg-gpt-sidebar flex flex-col h-full border-r border-gpt-border transition-all duration-200 shrink-0 ${
-      isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
-    }`}>
-      {/* Top action: New Chat */}
-      <div className="p-3">
+    <aside
+      className={`fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-gpt-border bg-gpt-sidebar transition-transform duration-300 ease-in-out md:static md:w-64 md:translate-x-0 ${
+        isOpen ? 'translate-x-0' : '-translate-x-full'
+      }`}
+    >
+      {/* Top action: New Chat & Mobile Close Button */}
+      <div className="flex items-center gap-2 p-3">
         <button
-          onClick={onNewChat}
-          className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg border border-gray-700 hover:bg-gpt-hover text-sm font-medium transition-colors"
+          onClick={handleNewChatClick}
+          className="flex-1 flex items-center justify-between px-3 py-2.5 rounded-lg border border-gray-700 hover:bg-gpt-hover text-sm font-medium transition-colors"
         >
           <div className="flex items-center gap-2">
             <Plus size={18} />
             <span>New chat</span>
           </div>
+        </button>
+
+        {/* Close button visible only on mobile */}
+        <button
+          onClick={onClose}
+          className="flex h-10 w-10 items-center justify-center rounded-lg border border-gray-700 hover:bg-gpt-hover text-gray-400 hover:text-white transition-colors md:hidden"
+          title="Close sidebar"
+        >
+          <X size={20} />
         </button>
       </div>
 
@@ -70,7 +93,7 @@ export default function Sidebar({
             return (
               <div
                 key={conv.id}
-                onClick={() => !isEditing && onSelect(conv.id)}
+                onClick={() => !isEditing && handleConversationClick(conv.id)}
                 className={`group relative flex items-center gap-3 px-3 py-2 rounded-lg text-sm cursor-pointer transition-colors ${
                   isActive
                     ? 'bg-gpt-hover text-white font-medium'
@@ -130,9 +153,9 @@ export default function Sidebar({
         )}
       </div>
 
-      {/* Model Selector Bar at the bottom */}
-      <div className="p-3 border-t border-gpt-border bg-[#141414]">
-        <div className="text-[11px] font-semibold text-gray-500 uppercase mb-1.5 flex items-center justify-between">
+      {/* Model Selector & Lock Button at the bottom */}
+      <div className="p-3 border-t border-gpt-border bg-[#141414] space-y-2">
+        <div className="text-[11px] font-semibold text-gray-500 uppercase flex items-center justify-between">
           <span className="flex items-center gap-1">
             <Cpu size={12} /> Model Engine
           </span>
@@ -149,6 +172,20 @@ export default function Sidebar({
             </option>
           ))}
         </select>
+
+        {/* Lock / Sign Out Button */}
+        {onLogout && (
+          <button
+            onClick={onLogout}
+            className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs text-gray-400 hover:text-white hover:bg-gpt-hover transition-colors border border-transparent hover:border-gray-700"
+          >
+            <div className="flex items-center gap-2">
+              <Shield size={14} className="text-[#10a37f]" />
+              <span>Lock / Sign Out</span>
+            </div>
+            <LogOut size={13} />
+          </button>
+        )}
       </div>
     </aside>
   );
