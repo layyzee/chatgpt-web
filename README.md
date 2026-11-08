@@ -1,5 +1,7 @@
 # 🤖 ChatGPT Web Clone (Full-Stack + Local AI)
 
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/layyzee/chatgpt-web)
+
 A production-grade ChatGPT clone with persistent SQLite memory, real-time word-by-word streaming, live web search, document Q&A, voice chat, session management, and zero API costs. Powered locally by **Ollama (Llama 3.2 & Qwen 2.5 Coder)**.
 
 ---
