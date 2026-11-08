@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, MessageSquare, Trash2, Edit2, Check, X, Cpu, LogOut, Shield } from 'lucide-react';
+import { Plus, MessageSquare, Trash2, Edit2, Check, X, Cpu, LogOut, Shield, Settings } from 'lucide-react';
 
 export default function Sidebar({
   conversations,
@@ -13,7 +13,8 @@ export default function Sidebar({
   onSelectModel,
   isOpen,
   onClose,
-  onLogout
+  onLogout,
+  onOpenAdmin
 }) {
   const [editingId, setEditingId] = useState(null);
   const [editTitle, setEditTitle] = useState('');
@@ -153,7 +154,7 @@ export default function Sidebar({
         )}
       </div>
 
-      {/* Model Selector & Lock Button at the bottom */}
+      {/* Model Selector & Admin Tools in Footer */}
       <div className="p-3 border-t border-gpt-border bg-[#141414] space-y-2">
         <div className="text-[11px] font-semibold text-gray-500 uppercase flex items-center justify-between">
           <span className="flex items-center gap-1">
@@ -173,16 +174,27 @@ export default function Sidebar({
           ))}
         </select>
 
+        {/* Admin Portal Button */}
+        {onOpenAdmin && (
+          <button
+            onClick={onOpenAdmin}
+            className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs text-gray-300 hover:text-white hover:bg-gpt-hover transition-colors border border-gray-700/60"
+          >
+            <div className="flex items-center gap-2">
+              <Shield size={14} className="text-[#10a37f]" />
+              <span>Admin & Devices</span>
+            </div>
+            <Settings size={13} className="text-gray-400" />
+          </button>
+        )}
+
         {/* Lock / Sign Out Button */}
         {onLogout && (
           <button
             onClick={onLogout}
-            className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs text-gray-400 hover:text-white hover:bg-gpt-hover transition-colors border border-transparent hover:border-gray-700"
+            className="w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-xs text-gray-400 hover:text-white hover:bg-gpt-hover transition-colors"
           >
-            <div className="flex items-center gap-2">
-              <Shield size={14} className="text-[#10a37f]" />
-              <span>Lock / Sign Out</span>
-            </div>
+            <span>Lock / Sign Out</span>
             <LogOut size={13} />
           </button>
         )}

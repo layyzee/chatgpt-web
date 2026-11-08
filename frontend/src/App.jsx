@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Sidebar from './components/Sidebar.jsx';
 import ChatView from './components/ChatView.jsx';
 import AuthScreen from './components/AuthScreen.jsx';
+import AdminModal from './components/AdminModal.jsx';
 
 export default function App() {
   const [token, setToken] = useState(() => localStorage.getItem('chatgpt_token') || '');
@@ -16,6 +17,7 @@ export default function App() {
   const [models, setModels] = useState([{ id: 'llama3.2:3b', name: 'Llama 3.2 3B (Local 100% Offline)' }]);
   const [selectedModel, setSelectedModel] = useState('llama3.2:3b');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [adminOpen, setAdminOpen] = useState(false);
 
   const abortControllerRef = useRef(null);
 
@@ -275,6 +277,13 @@ export default function App() {
         />
       )}
 
+      {/* Admin & Device Manager Modal */}
+      <AdminModal
+        isOpen={adminOpen}
+        onClose={() => setAdminOpen(false)}
+        authFetch={authFetch}
+      />
+
       {/* Sidebar Drawer */}
       <Sidebar
         conversations={conversations}
@@ -289,6 +298,7 @@ export default function App() {
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
         onLogout={handleLogout}
+        onOpenAdmin={() => setAdminOpen(true)}
       />
 
       {/* Main Chat Interface */}

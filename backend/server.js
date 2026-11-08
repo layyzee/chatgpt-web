@@ -9,20 +9,32 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
+// Helper to extract client metadata (IP, Country, User Agent)
+function getClientMeta(req) {
+  const ip = req.headers['cf-connecting-ip'] || 
+             req.headers['x-forwarded-for']?.split(',')[0].trim() || 
+             req.socket.remoteAddress || 
+             '127.0.0.1';
+  const country = req.headers['cf-ipcountry'] || 'Local';
+  const userAgent = req.headers['user-agent'] || '';
+  return { ip, country, userAgent };
+}
+
 // --- Authentication Middleware ---
 function requireAuth(req, res, next) {
   if (!db.isAuthSetup()) {
-    // If not setup yet, reject protected operations until setup is complete
     return res.status(401).json({ error: 'Setup required', requiresSetup: true });
   }
 
   const authHeader = req.headers.authorization;
   const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  const meta = getClientMeta(req);
 
-  if (!token || !db.validateSession(token)) {
+  if (!token || !db.validateSession(token, meta)) {
     return res.status(401).json({ error: 'Unauthorized: Session invalid or expired' });
   }
 
+  req.currentToken = token;
   next();
 }
 
@@ -33,7 +45,8 @@ app.get('/api/auth/status', (req, res) => {
     const isSetup = db.isAuthSetup();
     const authHeader = req.headers.authorization;
     const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
-    const authenticated = isSetup ? db.validateSession(token) : false;
+    const meta = getClientMeta(req);
+    const authenticated = isSetup ? db.validateSession(token, meta) : false;
     res.json({ isSetup, authenticated });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -46,7 +59,8 @@ app.post('/api/auth/setup', (req, res) => {
     if (!password || password.trim().length < 4) {
       return res.status(400).json({ error: 'Password must be at least 4 characters long' });
     }
-    const session = db.setupPassword(password.trim());
+    const meta = getClientMeta(req);
+    const session = db.setupPassword(password.trim(), meta);
     res.json({ success: true, ...session });
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -59,7 +73,8 @@ app.post('/api/auth/login', (req, res) => {
     if (!password) {
       return res.status(400).json({ error: 'Password is required' });
     }
-    const session = db.loginWithPassword(password.trim());
+    const meta = getClientMeta(req);
+    const session = db.loginWithPassword(password.trim(), meta);
     if (!session) {
       return res.status(401).json({ error: 'Incorrect password. Access denied.' });
     }
@@ -80,7 +95,68 @@ app.post('/api/auth/logout', (req, res) => {
   }
 });
 
-// --- Protected App Endpoints ---
+// --- Admin Portal & Session Management Endpoints (Protected) ---
+
+// Get all active logged-in sessions / devices
+app.get('/api/admin/sessions', requireAuth, (req, res) => {
+  try {
+    const sessions = db.getAllSessions().map(s => ({
+      ...s,
+      isCurrent: s.token === req.currentToken,
+      // Mask token except last 6 chars for security identification
+      displayToken: s.token.slice(-6)
+    }));
+    res.json(sessions);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Revoke a specific session / kick device
+app.delete('/api/admin/sessions/:token', requireAuth, (req, res) => {
+  try {
+    db.deleteSession(req.params.token);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Revoke all other sessions except current
+app.post('/api/admin/sessions/revoke-others', requireAuth, (req, res) => {
+  try {
+    db.revokeOtherSessions(req.currentToken);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get system & database statistics
+app.get('/api/admin/stats', requireAuth, (req, res) => {
+  try {
+    const stats = db.getStats();
+    res.json(stats);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Change Master Password
+app.post('/api/admin/change-password', requireAuth, (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    if (!newPassword || newPassword.trim().length < 4) {
+      return res.status(400).json({ error: 'New password must be at least 4 characters' });
+    }
+    db.changePassword(currentPassword, newPassword.trim());
+    res.json({ success: true });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// --- Protected Conversations & Chat Endpoints ---
 
 // List all conversations
 app.get('/api/conversations', requireAuth, (req, res) => {
