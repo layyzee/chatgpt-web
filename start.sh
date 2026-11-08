@@ -9,7 +9,6 @@ echo "=================================================="
 echo "🚀 Starting Full-Stack ChatGPT Web App"
 echo "   Backend:  http://127.0.0.1:3001"
 echo "   Frontend: http://127.0.0.1:5174"
-echo "   Model:    Local Llama 3.2 3B (Ollama - 100% Offline, \$0)"
 echo "   Database: SQLite (backend/chat.db)"
 echo "=================================================="
 
@@ -19,6 +18,9 @@ if ! curl -s http://localhost:11434/api/tags >/dev/null 2>&1; then
   nohup ollama serve >/dev/null 2>&1 &
   sleep 1
 fi
+
+# Clean up previous tunnel log
+rm -f "$DIR/tunnel.log"
 
 # Start backend
 cd "$DIR/backend"
@@ -41,18 +43,17 @@ trap "kill $BACKEND_PID $FRONTEND_PID $TUNNEL_PID 2>/dev/null" EXIT
 for i in {1..20}; do
   if grep -q "trycloudflare.com" "$DIR/tunnel.log" 2>/dev/null; then
     PUBLIC_URL=$(grep -o 'https://[-a-zA-Z0-9]*\.trycloudflare\.com' "$DIR/tunnel.log" | tail -n 1)
-    echo ""
-    echo "=================================================="
-    echo "🌍 PUBLIC HTTPS LINK (Works on your phone/friends):"
-    echo "   👉 $PUBLIC_URL"
-    echo "=================================================="
-    echo ""
-    break
+    if [ -n "$PUBLIC_URL" ]; then
+      echo ""
+      echo "=================================================="
+      echo "🌍 PUBLIC HTTPS LINK (Works on your phone/friends):"
+      echo "   👉 $PUBLIC_URL"
+      echo "=================================================="
+      echo ""
+      break
+    fi
   fi
-  sleep 0.5
+  sleep 0.8
 done
-
-sleep 1
-open "http://127.0.0.1:5174"
 
 wait
