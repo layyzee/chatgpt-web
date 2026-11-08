@@ -2,10 +2,13 @@
   "name": "balagpt",
   "version": "1.0.0",
   "description": "Full-stack BalaGPT personal AI with SQLite persistence and local/cloud AI streaming",
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "scripts": {
     "build": "npm run render:build",
     "start": "npm run render:start",
-    "render:build": "cd frontend && npm install && npm run build && cd ../backend && npm install",
-    "render:start": "cd backend && node server.js"
+    "render:build": "cd frontend && npm install --include=dev && npm run build && cd ../backend && npm install",
+    "render:start": "cd backend && node --experimental-sqlite server.js"
   }
 }
