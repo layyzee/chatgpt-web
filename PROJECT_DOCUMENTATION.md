@@ -13,6 +13,8 @@
 6. [Security & Authentication Architecture](#6-security--authentication-architecture)
 7. [Deployment & DevOps (Local & Cloud)](#7-deployment--devops)
 8. [Performance & Cost Analysis](#8-performance--cost-analysis)
+9. [Monitoring, Deployment IDs & Live Operations Directory](#9-monitoring-deployment-ids--live-operations-directory)
+10. [Visual Layout & Interface Walkthrough](#10-visual-layout--interface-walkthrough)
 
 ---
 
@@ -222,3 +224,152 @@ erDiagram
 | **Battery Consumption** | ~3–5W during generation | **0.0% (Mac can be OFF)** | 0.0% |
 | **Data Privacy** | 100% On-Device | Encrypted in transit | Logged & trained on by default |
 | **Uptime** | Only when Mac is awake | **24/7/365 in the Cloud** | 24/7 |
+
+---
+
+## 9. Monitoring, Deployment IDs & Live Operations Directory
+
+This directory provides all direct URLs, infrastructure identifiers, and monitoring dashboards needed to supervise, inspect, and manage BalaGPT.
+
+### 📍 Master Deployment Directory
+
+| Resource / Target | Description | URL / Identifier | Authentication / Access |
+| :--- | :--- | :--- | :--- |
+| **Live Production Web App** | 24/7 Cloud deployment of BalaGPT | [https://balagpt.onrender.com](https://balagpt.onrender.com) | Master Password (Owner) |
+| **PWA Web App Manifest** | Mobile install configuration | [https://balagpt.onrender.com/manifest.json](https://balagpt.onrender.com/manifest.json) | Public (HTTP 200) |
+| **Auth Status Health Endpoint** | Instant uptime & initialization check | [https://balagpt.onrender.com/api/auth/status](https://balagpt.onrender.com/api/auth/status) | Public (HTTP 200) |
+| **Render Cloud Dashboard** | Service status, deploy triggers, environment | [https://dashboard.render.com](https://dashboard.render.com) | Render Account (`layyzee`) |
+| **Render Web Service ID/Name** | Active Web Service on Render | **`balagpt`** (Region: Oregon, Node 22) | Status: `✓ Deployed` |
+| **Render Blueprint ID** | Infrastructure-as-code sync ID | **`exs-dbo1adnf3r2c739tlq0g`** | Managed via `render.yaml` |
+| **GitHub Source Repository** | Version control & CI/CD pipeline | [https://github.com/layyzee/chatgpt-web](https://github.com/layyzee/chatgpt-web) | Branch: `main` |
+| **Groq Cloud Console** | LPU inference metrics, latency & quotas | [https://console.groq.com](https://console.groq.com) | Groq Account |
+| **Groq API Keys Portal** | Create, rotate, or inspect API keys | [https://console.groq.com/keys](https://console.groq.com/keys) | Bearer API Key |
+| **Groq Usage & Rate Limits** | Real-time TPM / RPM tracker | [https://console.groq.com/usage](https://console.groq.com/usage) | Free Tier (14.4k req/day) |
+| **Local Dev Frontend** | Local macOS development interface | [http://localhost:5174](http://localhost:5174) | Local network only |
+| **Local Dev Backend** | Local Express & SQLite API | [http://localhost:3001](http://localhost:3001) | Local network only |
+
+---
+
+### 🔍 How to Monitor Logs & Server Health
+
+#### 1. Live Cloud Server Logs (Render.com)
+1. Go to [https://dashboard.render.com](https://dashboard.render.com).
+2. Under **Projects** or **Ungrouped Services**, click on **`balagpt`**.
+3. In the left navigation menu, click **Logs**.
+4. You will see real-time streaming output of:
+   - Server boots and port bindings (`Listening on port 3001`)
+   - Incoming HTTP requests and status codes (`GET /api/auth/status 200`)
+   - Groq Cloud API streaming chunks and Server-Sent Events (SSE)
+   - DuckDuckGo web search queries and scraping latency
+
+#### 2. Resource & Performance Metrics (CPU / RAM)
+1. In the `balagpt` service dashboard on Render, click **Metrics** in the left sidebar.
+2. Monitor:
+   - **Memory Usage:** Typically under **70MB / 512MB** (extremely lightweight, well within free tier).
+   - **CPU Usage:** Near **0%** at idle, spiking momentarily during incoming SSE token streaming.
+   - **HTTP Latency:** Average response time under **80ms**.
+
+#### 3. Blueprint Sync History & Build Logs
+1. In Render Dashboard, click **Blueprints** (left sidebar).
+2. Select **`balagpt`** (`exs-dbo1adnf3r2c739tlq0g`).
+3. Click **Syncs** to view build history, commit hashes, and build deployment outputs.
+
+---
+
+### 🧹 Housekeeping: Removing Obsolete Failed Services
+
+In your Render Dashboard, you may see two cards:
+- **`balagpt`** (`✓ Deployed` in green) — **Keep this! This is your live production application.**
+- **`chatgpt-web`** (`✕ Failed deploy` in red) — This was the initial blueprint run prior to the Node 22 upgrade and rebrand.
+
+**To cleanly delete the old `chatgpt-web` card:**
+1. Open [https://dashboard.render.com](https://dashboard.render.com).
+2. Click on the red **`chatgpt-web`** service card.
+3. In the left sidebar, click **Settings**.
+4. Scroll all the way to the bottom to the **Danger Zone**.
+5. Click **Delete Web Service**, type `chatgpt-web` to confirm, and click **Delete**.
+6. Your dashboard will now show a 100% clean, all-green status.
+
+---
+
+### 🔑 Groq API Key Configuration
+
+To ensure cloud inference (`openai/gpt-oss-120b` and `qwen/qwen3.8-27b`) is active in production:
+
+#### Method A: Via Render Environment Variables (Recommended for Zero-Maintenance)
+1. Open [https://dashboard.render.com](https://dashboard.render.com) and click on **`balagpt`**.
+2. Click **Environment** in the left sidebar.
+3. Look for `GROQ_API_KEY`.
+4. Click **Edit**, paste your key (`gsk_...`), and click **Save Changes**.
+5. Render will automatically redeploy with the key permanently active.
+
+#### Method B: Via BalaGPT In-App Admin Settings
+1. Open [https://balagpt.onrender.com](https://balagpt.onrender.com).
+2. Log in with your master password.
+3. Click the **Admin / Shield icon (🛡️)** in the sidebar footer.
+4. Paste your Groq API key in the **Groq Cloud API Key** field and click **Save Key**.
+5. The key is securely saved into SQLite (`config` table).
+
+---
+
+## 10. Visual Layout & Interface Walkthrough
+
+### 🖥️ Desktop Main Workspace Layout
+
+```
++---------------------------------------------------------------------------------------+
+|  BalaGPT                    [ GPT-OSS 120B (Groq 800 t/s) v ]           [🛡️ Admin] [🔒] |
++---------------------+-----------------------------------------------------------------+
+|  + New Chat         |                                                                 |
+|                     |   User: What are the architectural differences between          |
+|  Recent Chats:      |         event loops in Node.js vs Python Asyncio?               |
+|  • Asyncio vs Node  |                                                                 |
+|  • React 18 Concurr |   BalaGPT:                                                      |
+|  • Dockerizing PWA  |   Here is an in-depth comparison of both runtime event loops:  |
+|  • Scrypt Hashing   |                                                                 |
+|                     |   ┌─────────────────────┬───────────────────┐                 |
+|                     |   │ Feature             │ Node.js (libuv)   │ Python (asyncio)  │
+|                     |   ├─────────────────────┼───────────────────┤                 |
+|                     |   │ Multi-threading     │ libuv thread pool │ Single-threaded   │
+|                     |   └─────────────────────┴───────────────────┘                 |
+|                     |                                                                 |
+|                     |   [🔊 Read Aloud]  [📋 Copy]                                    |
++---------------------+-----------------------------------------------------------------+
+|  [📥 Export .md]    |  [🌐 Search: ON] [📎 Attach File]                               |
+|  [📄 Export .pdf]   |  +----------------------------------------------------+ [🎙️]    |
+|  [⚙️ Settings]      |  | Message BalaGPT...                                 | [Send ^]|
+|                     |  +----------------------------------------------------+         |
++---------------------+-----------------------------------------------------------------+
+```
+
+### 🛡️ Admin & Security Portal Layout
+
+```
++-----------------------------------------------------------------------+
+|  🛡️ BalaGPT Security & Device Management                      [Close X] |
++-----------------------------------------------------------------------+
+|  DATABASE & STORAGE                                                   |
+|  Total Messages: 482        Database Size: 164 KB     Status: Healthy |
+|                                                                       |
+|  GROQ CLOUD CONFIGURATION                                             |
+|  Status: [🟢 Connected]                                               |
+|  [ gsk_BXpU0bpmJUYLzZr8onZSWGdyb3FYvx...            ] [Save Key]      |
+|                                                                       |
+|  ACTIVE LOGGED-IN DEVICES (SESSIONS)                                  |
+|  +-----------------------------------------------------------------+  |
+|  | 💻 Apple MacBook Pro (MacIntel) - CURRENT DEVICE                |  |
+|  | IP: 103.xxx.xxx.xx (India)  •  Last active: Just now            |  |
+|  +-----------------------------------------------------------------+  |
+|  | 📱 iPhone 15 Pro (Mobile Safari)                                |  |
+|  | IP: 49.xxx.xxx.xx  (India)  •  Last active: 14 mins ago          |  |
+|  |                                                [🔴 Kick Device] |  |
+|  +-----------------------------------------------------------------+  |
+|                                                                       |
+|  [⚠️ Revoke All Other Devices]                                         |
++-----------------------------------------------------------------------+
+```
+
+### 📱 Mobile PWA (iOS & Android)
+1. **Zero App Store Hassle:** Open `https://balagpt.onrender.com` in Safari (iOS) or Chrome (Android).
+2. **Add to Home Screen:** Tap the Share button -> **"Add to Home Screen"**.
+3. **Standalone UI:** Launches as a native, borderless app with bottom-sheet drawer navigation, full touch gestures, and native microphone dictation.

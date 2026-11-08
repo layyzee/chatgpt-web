@@ -58,8 +58,17 @@ This terminates all backend/frontend processes, kills the Cloudflare tunnel, and
 
 ---
 
-## ☁️ 1-Click Cloud Deployment (Render.com)
+## ☁️ Cloud Deployment & Live Operations
 
+| Resource / Target | Identifier / URL | Status |
+| :--- | :--- | :--- |
+| **Live Web App** | [https://balagpt.onrender.com](https://balagpt.onrender.com) | 🟢 Live (HTTP 200) |
+| **Render Dashboard** | [https://dashboard.render.com](https://dashboard.render.com) | Service: **`balagpt`** |
+| **Render Blueprint ID** | `exs-dbo1adnf3r2c739tlq0g` | Region: Oregon, US |
+| **Groq Cloud Console** | [https://console.groq.com](https://console.groq.com) | Free LPU Engine (800+ t/s) |
+| **GitHub Repository** | [https://github.com/layyzee/chatgpt-web](https://github.com/layyzee/chatgpt-web) | CI/CD on `main` |
+
+### Deploy New Instance
 Click the **Deploy to Render** button above or use:
 👉 **[Deploy BalaGPT to Render](https://render.com/deploy?repo=https://github.com/layyzee/chatgpt-web)**
 
