@@ -126,9 +126,10 @@ Users can toggle between local and cloud models on the fly:
 - **Voice Dictation:** Tap the microphone icon to dictate prompts hands-free.
 - **Speech Synthesis:** Tap "Read Aloud" on any response to listen to the model speak its answer naturally.
 
-### 4. Document & Code Attachment (RAG-Lite)
-- Attach code files (`.py`, `.js`, `.sql`), text files (`.txt`, `.md`), or structured data (`.json`, `.csv`).
-- BalaGPT reads the file in memory and provides debugging, refactoring, or document summarization.
+### 4. Multi-Page PDF & Universal Document Knowledge Base
+- **Multi-Page PDF Parser:** Integrates client-side PDF.js rendering to extract all text across multi-page PDF documents, demarcating pages (`--- [Page X of Y] ---`) up to 20MB.
+- **Structured & Code Files:** Supports `.pdf`, `.csv`, `.tsv`, `.json`, `.sql`, `.py`, `.js`, `.ts`, `.md`, `.txt`, `.yaml`.
+- **Large Context Window:** Leverages Groq Cloud's 131,072-token context window (`openai/gpt-oss-120b`) to analyze complete textbooks, research papers, specs, and financial datasets.
 
 ### 5. Admin & Device Security Portal
 - **Active Session Tracker:** Shows device model (`iPhone`, `Mac`, `Android`), IP address, country location, and last-active timestamp.
@@ -139,6 +140,15 @@ Users can toggle between local and cloud models on the fly:
 ### 6. Export Conversations
 - **Markdown Export (`.md`):** One-click download of formatted chat history with timestamps and code blocks.
 - **Printable PDF Export (`.pdf`):** Auto-formatted print layout stripping out UI controls for clean documentation.
+
+### 7. AI Personas & Specialized System Roles
+Switch between curated expert personas on the fly or configure your own:
+- ⚡ **General Assistant:** Helpful, concise, articulate.
+- 💻 **Senior Software Architect:** Production-grade code, system design, security, complexity analysis.
+- 🎯 **BGMI & Esports Coach:** Deep mastery of gyro sensitivities, 4-finger claw, jiggle, recoil control, zone rotations.
+- 📝 **Executive Writer & Resume Pro:** ATS resume optimization, executive memos, punchy copy.
+- 🧠 **First-Principles Thinker:** Socratic dialogue, deconstructing assumptions, deep reasoning.
+- 🛠️ **Custom Persona Builder:** Define any specialized persona prompt with instant persistence.
 
 ---
 

@@ -16,9 +16,15 @@ import {
   X,
   Globe,
   Download,
-  Printer
+  Printer,
+  FileCode,
+  FileSpreadsheet,
+  Loader2
 } from 'lucide-react';
 import MessageItem from './MessageItem.jsx';
+import PersonaSelector from './PersonaSelector.jsx';
+import { getStoredPersona } from '../utils/personas.js';
+import { parseUploadedDocument } from '../utils/documentParser.js';
 
 const SUGGESTIONS = [
   {
@@ -55,7 +61,10 @@ export default function ChatView({
   isSearchingWeb
 }) {
   const [input, setInput] = useState('');
-  const [attachedFile, setAttachedFile] = useState(null); // { name, size, content }
+  const [attachedFile, setAttachedFile] = useState(null); // { name, size, type, pages, charCount, lineCount, content }
+  const [isParsingDocument, setIsParsingDocument] = useState(false);
+  const [parseStatus, setParseStatus] = useState('');
+  const [currentPersona, setCurrentPersona] = useState(getStoredPersona);
   const [isListening, setIsListening] = useState(false);
   const [webSearchEnabled, setWebSearchEnabled] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
@@ -129,26 +138,23 @@ export default function ChatView({
     }
   };
 
-  const handleFileUpload = (e) => {
+  const handleFileUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 5 * 1024 * 1024) {
-      alert('File too large. Maximum size is 5MB.');
-      return;
-    }
+    setIsParsingDocument(true);
+    setParseStatus('Inspecting document...');
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const content = event.target?.result;
-      setAttachedFile({
-        name: file.name,
-        size: (file.size / 1024).toFixed(1) + ' KB',
-        content: typeof content === 'string' ? content : ''
-      });
-    };
-    reader.readAsText(file);
-    e.target.value = '';
+    try {
+      const parsed = await parseUploadedDocument(file, (msg) => setParseStatus(msg));
+      setAttachedFile(parsed);
+    } catch (err) {
+      alert(`Could not process file: ${err.message}`);
+    } finally {
+      setIsParsingDocument(false);
+      setParseStatus('');
+      e.target.value = '';
+    }
   };
 
   const removeAttachedFile = () => {
@@ -157,14 +163,23 @@ export default function ChatView({
 
   const handleSubmit = (e) => {
     e?.preventDefault();
-    if ((!input.trim() && !attachedFile) || isGenerating) return;
+    if ((!input.trim() && !attachedFile) || isGenerating || isParsingDocument) return;
 
     let fullPrompt = input.trim();
     if (attachedFile) {
-      fullPrompt = `[Attached Document: ${attachedFile.name}]\n\`\`\`\n${attachedFile.content}\n\`\`\`\n\n${fullPrompt || 'Please analyze this document.'}`;
+      const docHeader = attachedFile.pages 
+        ? `[Attached Multi-Page PDF Document: ${attachedFile.name} (${attachedFile.pages} Pages, ${attachedFile.size})]\n\`\`\`\n${attachedFile.content}\n\`\`\``
+        : attachedFile.lineCount
+          ? `[Attached Document: ${attachedFile.name} (${attachedFile.lineCount} Lines, ${attachedFile.size})]\n\`\`\`\n${attachedFile.content}\n\`\`\``
+          : `[Attached Document: ${attachedFile.name} (${attachedFile.size})]\n\`\`\`\n${attachedFile.content}\n\`\`\``;
+
+      fullPrompt = `${docHeader}\n\n${input.trim() || 'Please analyze this document in detail and extract the key insights.'}`;
     }
 
-    onSend(fullPrompt, { webSearch: webSearchEnabled });
+    onSend(fullPrompt, { 
+      webSearch: webSearchEnabled,
+      systemPrompt: currentPersona?.prompt || undefined
+    });
     setInput('');
     setAttachedFile(null);
   };
@@ -266,10 +281,16 @@ export default function ChatView({
             <Plus size={16} />
           </button>
 
+          {/* AI Persona Selector */}
+          <PersonaSelector 
+            currentPersona={currentPersona} 
+            onSelectPersona={setCurrentPersona} 
+          />
+
           {/* Model badge */}
           <div className="flex items-center gap-1.5 bg-black/40 px-2.5 py-1 rounded-full text-[11px] border border-gray-700 shrink-0">
             <span className="w-1.5 h-1.5 rounded-full bg-green-400"></span>
-            <span className="truncate max-w-[110px] sm:max-w-none">{selectedModel}</span>
+            <span className="truncate max-w-[90px] sm:max-w-none">{selectedModel}</span>
           </div>
         </div>
       </header>
@@ -332,16 +353,53 @@ export default function ChatView({
       {/* Floating Input Bar */}
       <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-gpt-main via-gpt-main/90 to-transparent pt-6 pb-3 sm:pb-4 px-3 sm:px-4 z-20 print:hidden">
         <div className="max-w-3xl mx-auto">
-          {/* Attached File Chip */}
+          {/* Document Parsing Loading State */}
+          {isParsingDocument && (
+            <div className="mb-2 flex items-center gap-2 rounded-xl bg-amber-500/10 border border-amber-500/30 px-3 py-1.5 text-xs text-amber-300 w-fit max-w-full animate-pulse">
+              <Loader2 size={14} className="animate-spin text-amber-400 shrink-0" />
+              <span>{parseStatus || 'Extracting document text...'}</span>
+            </div>
+          )}
+
+          {/* Attached File Chip with Type Badges */}
           {attachedFile && (
-            <div className="mb-2 flex items-center gap-2 rounded-lg bg-[#2d2f34] border border-gray-700 px-3 py-1.5 text-xs text-gray-200 w-fit max-w-full">
-              <FileText size={14} className="text-gpt-green shrink-0" />
-              <span className="truncate max-w-[200px] sm:max-w-xs">{attachedFile.name}</span>
+            <div className={`mb-2 flex items-center gap-2 rounded-xl border px-3 py-1.5 text-xs text-gray-200 w-fit max-w-full shadow-lg ${
+              attachedFile.type === 'pdf'
+                ? 'bg-red-500/15 border-red-500/30 text-red-200'
+                : attachedFile.type === 'spreadsheet'
+                ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-200'
+                : attachedFile.type === 'json'
+                ? 'bg-yellow-500/15 border-yellow-500/30 text-yellow-200'
+                : 'bg-blue-500/15 border-blue-500/30 text-blue-200'
+            }`}>
+              {attachedFile.type === 'pdf' ? (
+                <FileText size={15} className="text-red-400 shrink-0" />
+              ) : attachedFile.type === 'spreadsheet' ? (
+                <FileSpreadsheet size={15} className="text-emerald-400 shrink-0" />
+              ) : (
+                <FileCode size={15} className="text-blue-400 shrink-0" />
+              )}
+
+              <span className="font-medium truncate max-w-[180px] sm:max-w-xs">{attachedFile.name}</span>
+              
+              {attachedFile.pages && (
+                <span className="text-[10px] bg-red-500/30 text-red-300 px-1.5 py-0.5 rounded font-mono shrink-0">
+                  {attachedFile.pages} {attachedFile.pages === 1 ? 'Page' : 'Pages'}
+                </span>
+              )}
+
+              {attachedFile.lineCount && (
+                <span className="text-[10px] bg-gray-700/60 text-gray-300 px-1.5 py-0.5 rounded font-mono shrink-0">
+                  {attachedFile.lineCount} Lines
+                </span>
+              )}
+
               <span className="text-[10px] text-gray-400 shrink-0">({attachedFile.size})</span>
+
               <button
                 type="button"
                 onClick={removeAttachedFile}
-                className="ml-1 text-gray-400 hover:text-white"
+                className="ml-1 text-gray-400 hover:text-white p-0.5 rounded hover:bg-black/30"
                 title="Remove attached document"
               >
                 <X size={13} />
@@ -359,7 +417,7 @@ export default function ChatView({
               ref={fileInputRef}
               onChange={handleFileUpload}
               className="hidden"
-              accept=".txt,.md,.json,.js,.jsx,.ts,.tsx,.py,.html,.css,.csv,.sql,.env,.log,.xml,.yaml,.yml,.c,.cpp,.h"
+              accept=".pdf,.txt,.md,.json,.js,.jsx,.ts,.tsx,.py,.html,.css,.csv,.tsv,.sql,.env,.log,.xml,.yaml,.yml,.c,.cpp,.h"
             />
 
             <div className="flex items-center pl-2 pt-1 gap-1">

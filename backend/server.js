@@ -287,9 +287,9 @@ app.get('/api/models', requireAuth, async (req, res) => {
   res.json({ models, ollamaOnline, hasGroqKey: !!groqKey });
 });
 
-// Streaming chat endpoint with Server-Sent Events (SSE) + Live Web Search
+// Streaming chat endpoint with Server-Sent Events (SSE) + Live Web Search + Personas
 app.post('/api/chat/stream', requireAuth, async (req, res) => {
-  const { conversationId, message, model = 'openai/gpt-oss-120b', webSearch = false } = req.body;
+  const { conversationId, message, model = 'openai/gpt-oss-120b', webSearch = false, systemPrompt } = req.body;
 
   if (!conversationId || !message) {
     return res.status(400).json({ error: 'conversationId and message are required' });
@@ -340,6 +340,11 @@ app.post('/api/chat/stream', requireAuth, async (req, res) => {
   const groqKey = process.env.GROQ_API_KEY || db.getConfig('groq_api_key');
   const isGroqModel = model.startsWith('openai/') || model.startsWith('qwen/') || (!model.includes(':') && groqKey);
 
+  // Prepend persona system prompt if provided
+  const payloadMessages = systemPrompt 
+    ? [{ role: 'system', content: systemPrompt }, ...history]
+    : history;
+
   try {
     if (isGroqModel && groqKey) {
       // Stream from Groq Cloud (Free 800 tokens/sec Llama 3)
@@ -352,7 +357,7 @@ app.post('/api/chat/stream', requireAuth, async (req, res) => {
         },
         body: JSON.stringify({
           model: targetModel,
-          messages: history,
+          messages: payloadMessages,
           stream: true
         })
       });
@@ -392,7 +397,7 @@ app.post('/api/chat/stream', requireAuth, async (req, res) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: model,
-          messages: history,
+          messages: payloadMessages,
           stream: true
         })
       });

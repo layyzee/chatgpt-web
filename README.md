@@ -29,8 +29,11 @@ A high-performance personal AI with persistent SQLite memory, real-time word-by-
 - **🎙️ Voice Chat (Speech-to-Text & Text-to-Speech):**
   - **Dictation:** Tap the microphone icon to speak your prompts.
   - **Read Aloud:** Tap the speaker icon on any assistant message to hear it read out loud.
-- **📎 Document & Code Attachment (Document Q&A):**
-  - Attach `.py`, `.js`, `.txt`, `.md`, `.json`, `.csv`, `.sql` files directly to your prompt.
+- **📎 Multi-Page PDF & Universal Document Knowledge Base:**
+  - Attach `.pdf`, `.csv`, `.tsv`, `.py`, `.js`, `.txt`, `.md`, `.json`, `.sql` files directly to your prompt.
+  - Multi-page PDF text extraction with page numbers, analyzing up to 20MB files against the 131k token context window.
+- **🎭 AI Personas & System Roles:**
+  - Toggle between specialized personas: Senior Software Architect, BGMI & Esports Coach, Executive Resume Pro, First-Principles Thinker, or build your own Custom Persona.
 - **🔒 Master Password Protection:**
   - Secure lock screen with scrypt-hashed password encryption and 30-day session tokens.
 - **📱 PWA (Installable Native App):**

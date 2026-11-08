@@ -192,7 +192,8 @@ export default function App() {
           conversationId: convId,
           message: text,
           model: selectedModel,
-          webSearch: !!options.webSearch
+          webSearch: !!options.webSearch,
+          systemPrompt: options.systemPrompt || undefined
         }),
         signal: abortControllerRef.current.signal
       });
