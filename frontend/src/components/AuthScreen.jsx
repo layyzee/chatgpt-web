@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Lock, KeyRound, ShieldCheck, Eye, EyeOff, Bot, ArrowRight, Loader2 } from 'lucide-react';
+import { Lock, KeyRound, ShieldCheck, Eye, EyeOff, Bot, ArrowRight, Loader2, Sparkles } from 'lucide-react';
 
 export default function AuthScreen({ isSetup, onAuthSuccess }) {
   const [password, setPassword] = useState('');
@@ -7,6 +7,26 @@ export default function AuthScreen({ isSetup, onAuthSuccess }) {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const handleRecruiterDemoLogin = async () => {
+    setPassword('12345');
+    setLoading(true);
+    setError('');
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: '12345' })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Incorrect demo password');
+      onAuthSuccess(data.token);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -144,6 +164,18 @@ export default function AuthScreen({ isSetup, onAuthSuccess }) {
               </>
             )}
           </button>
+
+          {isSetup && (
+            <button
+              type="button"
+              onClick={handleRecruiterDemoLogin}
+              disabled={loading}
+              className="mt-2.5 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-500/15 via-orange-500/15 to-amber-500/15 hover:from-amber-500/25 hover:to-orange-500/25 text-amber-300 border border-amber-500/30 py-2.5 text-xs font-bold transition-all hover:scale-[1.01] active:scale-[0.99] shadow-xs"
+            >
+              <Sparkles size={14} className="text-amber-400" />
+              <span>✨ 1-Click Recruiter Demo Access (12345)</span>
+            </button>
+          )}
         </form>
 
         <div className="mt-6 border-t border-gray-700/60 pt-4 text-center">
